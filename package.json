@@ -4,6 +4,10 @@
   "private": true,
   "description": "Local-first folder management desktop app for Windows and macOS",
   "main": "dist-electron/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mohamad44p/folder-mangement.git"
+  },
   "scripts": {
     "dev": "concurrently -k -n vite,electron -c blue,magenta \"bun run dev:renderer\" \"bun run dev:electron\"",
     "dev:renderer": "vite",
