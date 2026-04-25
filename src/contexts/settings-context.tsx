@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { MotionConfig } from "framer-motion"
 
 export type Density = "cozy" | "compact" | "spacious"
-export type Theme = "dark" | "light"
+export type Theme = "dark" | "light" | "auto"
 export type Language = "en" | "ar"
 
 export const ACCENT_OPTIONS = [
@@ -76,10 +76,35 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     root.dataset.density = settings.density
     if (settings.reduceMotion) root.dataset.reduceMotion = "true"
     else delete root.dataset.reduceMotion
-    root.dataset.theme = settings.theme
     root.lang = settings.language
     root.dir = settings.language === "ar" ? "rtl" : "ltr"
   }, [settings])
+
+  // Apply theme separately so we can subscribe to OS-level dark/light changes
+  // when the user picks 'auto'.
+  useEffect(() => {
+    const root = document.documentElement
+    const apply = (theme: Theme) => {
+      if (theme === "auto") {
+        const prefersDark =
+          typeof window !== "undefined" &&
+          typeof window.matchMedia === "function"
+            ? window.matchMedia("(prefers-color-scheme: dark)").matches
+            : true
+        root.dataset.theme = prefersDark ? "dark" : "light"
+      } else {
+        root.dataset.theme = theme
+      }
+    }
+    apply(settings.theme)
+    if (settings.theme === "auto" && typeof window !== "undefined" && typeof window.matchMedia === "function") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)")
+      const handler = () => apply("auto")
+      mq.addEventListener("change", handler)
+      return () => mq.removeEventListener("change", handler)
+    }
+    return undefined
+  }, [settings.theme])
 
   return (
     <SettingsContext.Provider

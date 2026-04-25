@@ -232,16 +232,29 @@ export function App() {
 
   const hasActiveFilters = !!searchQuery || selectedTags.length > 0 || filterKind !== "all"
 
+  // Map our 3-state theme to sonner's 3-state ("system" === our "auto").
+  const toasterTheme: "dark" | "light" | "system" =
+    theme === "auto" ? "system" : theme
+  // Resolve the visible theme for inline color overrides (matchMedia for auto).
+  const resolvedTheme: "dark" | "light" =
+    theme === "auto"
+      ? typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+      : theme
+
   return (
     <div className="min-h-screen bg-[#191919] flex">
       <Toaster
         position="bottom-center"
-        theme={theme}
+        theme={toasterTheme}
         toastOptions={{
           style: {
-            background: theme === "light" ? "#ffffff" : "#1A1A1A",
-            border: theme === "light" ? "1px solid rgba(0, 0, 0, 0.1)" : "1px solid rgba(255, 255, 255, 0.08)",
-            color: theme === "light" ? "#18181b" : "#fff",
+            background: resolvedTheme === "light" ? "#ffffff" : "#1A1A1A",
+            border: resolvedTheme === "light" ? "1px solid rgba(0, 0, 0, 0.1)" : "1px solid rgba(255, 255, 255, 0.08)",
+            color: resolvedTheme === "light" ? "#18181b" : "#fff",
             borderRadius: "12px",
           },
         }}

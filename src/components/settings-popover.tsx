@@ -4,12 +4,12 @@ import * as Popover from "@radix-ui/react-popover"
 import { useFolders } from "@/contexts/folder-context"
 import { ACCENT_OPTIONS, useSettings, type Density, type Theme, type Language } from "@/contexts/settings-context"
 import { useT } from "@/contexts/i18n-context"
-import { Settings, Check, Sun, Moon, Languages } from "lucide-react"
+import { Settings, Check, Sun, Moon, Languages, Monitor } from "lucide-react"
 import { AiKeysSection } from "./ai-keys-section"
 import type { ReactNode } from "react"
 
 const DENSITY_VALUES: Density[] = ["compact", "cozy", "spacious"]
-const THEMES: Theme[] = ["dark", "light"]
+const THEMES: Theme[] = ["dark", "light", "auto"]
 const LANGUAGES: Language[] = ["en", "ar"]
 
 export function SettingsPopover({ trigger }: { trigger?: ReactNode }) {
@@ -57,7 +57,7 @@ export function SettingsPopover({ trigger }: { trigger?: ReactNode }) {
             <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">{t("theme")}</div>
             <div className="flex gap-1 p-1 rounded-full bg-white/[0.04] border border-white/[0.06]">
               {THEMES.map((th) => {
-                const Icon = th === "dark" ? Moon : Sun
+                const Icon = th === "dark" ? Moon : th === "light" ? Sun : Monitor
                 return (
                   <button
                     key={th}
