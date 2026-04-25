@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from "electron"
 import * as path from "node:path"
+import { registerSettingsIpc, settingsStore } from "./ipc/settings"
 
 const isDev = process.env.NODE_ENV === "development"
 
@@ -43,7 +44,10 @@ if (!gotLock) {
     }
   })
 
-  void app.whenReady().then(createWindow)
+  void app.whenReady().then(() => {
+    registerSettingsIpc(settingsStore)
+    createWindow()
+  })
 
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit()

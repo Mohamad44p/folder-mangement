@@ -34,6 +34,8 @@ import { ExportModal, ImportModal } from "@/components/import-export-modal"
 import { ImageSearchModal } from "@/components/image-search-modal"
 import { OnboardingTour } from "@/components/onboarding-tour"
 import { FolderContextMenu } from "@/components/folder-context-menu"
+import { LibraryPicker } from "@/components/library-picker"
+import { library } from "@/lib/library"
 import { toast } from "sonner"
 import type { Project } from "@/lib/data"
 
@@ -127,10 +129,32 @@ export function App() {
   const { t } = useT()
   const { theme } = useSettings()
 
+  const [libraryReady, setLibraryReady] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showContent, setShowContent] = useState(false)
   const nextProjectIndexRef = useRef(0)
   const mainRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        if (typeof window === "undefined" || !window.api?.app) {
+          // Renderer running without electron preload (e.g. plain vite preview).
+          // Skip the picker so the existing localStorage-backed UI keeps working.
+          if (!cancelled) setLibraryReady(true)
+          return
+        }
+        const has = await window.api.app.hasLibraryPath()
+        if (!cancelled) setLibraryReady(has)
+      } catch {
+        if (!cancelled) setLibraryReady(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const allProjects = getDisplayFolders()
 
@@ -190,6 +214,14 @@ export function App() {
       return () => clearTimeout(timer)
     }
   }, [isLoading])
+
+  if (libraryReady === null) {
+    return <FullpageLoader duration={400} />
+  }
+
+  if (libraryReady === false) {
+    return <LibraryPicker onConfirmed={() => setLibraryReady(true)} />
+  }
 
   if (isLoading) {
     return <FullpageLoader duration={2000} />
