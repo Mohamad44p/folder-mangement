@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Geist_Mono, Cairo } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
+import { Inter, Cairo } from "next/font/google"
 import { GenerationProvider } from "@/contexts/generation-context"
 import { FolderProvider } from "@/contexts/folder-context"
 import { SettingsProvider } from "@/contexts/settings-context"
@@ -14,7 +13,6 @@ const inter = Inter({
   variable: "--font-latin",
   display: "swap",
 })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
   variable: "--font-arabic",
@@ -23,25 +21,20 @@ const cairo = Cairo({
 })
 
 export const metadata: Metadata = {
-  title: "Folders | v0 App",
-  description: "Dark mode folder management UI with thumbnails. Cards display folder name, file count, and timestamp. Includes new folder CTA and trial button.",
-  generator: "v0.app",
+  title: "Folders",
+  description: "Local-first folder management for Windows and macOS.",
   icons: {
     icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
+      { url: "/icons/folder1.png", sizes: "100x100", type: "image/png" },
+      { url: "/icons/folder2.png", sizes: "200x200", type: "image/png" },
+      { url: "/icons/folder3.png", sizes: "300x300", type: "image/png" },
+      { url: "/icons/folder4.png", sizes: "400x400", type: "image/png" },
     ],
-    apple: "/apple-icon.png",
+    shortcut: "/icons/folder2.png",
+    apple: [
+      { url: "/icons/folder3.png", sizes: "300x300", type: "image/png" },
+      { url: "/icons/folder4.png", sizes: "400x400", type: "image/png" },
+    ],
   },
 }
 
@@ -62,7 +55,6 @@ export default function RootLayout({
             </GenerationProvider>
           </I18nProvider>
         </SettingsProvider>
-        <Analytics />
       </body>
     </html>
   )
