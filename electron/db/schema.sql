@@ -1,6 +1,7 @@
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
-PRAGMA synchronous = NORMAL;
+-- PRAGMAs are set in openLibraryDb() before migrations run — keep them
+-- out of this baseline so runMigrations can wrap the whole file in a
+-- transaction (PRAGMA journal_mode / synchronous can't be changed
+-- inside a transaction).
 
 CREATE TABLE IF NOT EXISTS workspaces (
   id           TEXT PRIMARY KEY,
