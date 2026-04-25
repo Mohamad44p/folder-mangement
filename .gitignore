@@ -3,12 +3,12 @@
 # dependencies
 /node_modules
 
-# next.js
-/.next/
+# build output
+/dist-electron/
+/dist-renderer/
+/release/
 /out/
-
-# production
-/build
+/build/
 
 # debug
 npm-debug.log*
@@ -19,12 +19,8 @@ yarn-error.log*
 # env files
 .env*
 
-# vercel
-.vercel
-
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # claude code local state
 .claude/

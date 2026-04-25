@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useRef, useCallback } from "react"
 import confetti from "canvas-confetti"
 import { ProjectFolder } from "@/components/project-folder"
@@ -113,7 +111,7 @@ function CardDndWrapper({
   )
 }
 
-export default function FoldersPage() {
+export function App() {
   const { startGeneration } = useGeneration()
   const {
     createFolder,
