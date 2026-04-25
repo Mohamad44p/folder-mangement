@@ -23,7 +23,7 @@ export interface ProjectState {
   setMenuOpen: (value: boolean) => void
   showGeneratingFooter: boolean
   isGenerating: boolean
-  clipCount: number
+  fileCount: number
   remainingEta: string
   formattedDate: string
   imagePositions: ImagePosition[]

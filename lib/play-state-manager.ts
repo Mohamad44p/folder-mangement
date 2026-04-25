@@ -1,19 +1,19 @@
-// Global play state manager for clips
-// Ensures only one clip plays at a time across the entire app
+// Global play state manager for previewable files
+// Ensures only one file plays at a time across the entire app
 
-let currentPlayingClip: string | null = null
-const playStateListeners = new Set<(playingClipId: string | null) => void>()
+let currentPlayingFile: string | null = null
+const playStateListeners = new Set<(playingFileId: string | null) => void>()
 
-export function setPlayingClip(clipId: string | null) {
-  currentPlayingClip = clipId
-  playStateListeners.forEach((listener) => listener(clipId))
+export function setPlayingFile(fileId: string | null) {
+  currentPlayingFile = fileId
+  playStateListeners.forEach((listener) => listener(fileId))
 }
 
-export function subscribeToPlayState(listener: (playingClipId: string | null) => void) {
+export function subscribeToPlayState(listener: (playingFileId: string | null) => void) {
   playStateListeners.add(listener)
   return () => playStateListeners.delete(listener)
 }
 
-export function getCurrentPlayingClip() {
-  return currentPlayingClip
+export function getCurrentPlayingFile() {
+  return currentPlayingFile
 }

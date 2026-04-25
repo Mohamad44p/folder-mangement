@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber } from "@/lib/localize"
 import { Upload, ImageIcon } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -12,6 +14,7 @@ interface FileUploadZoneProps {
 
 export function FileUploadZone({ folderId, compact = false }: FileUploadZoneProps) {
   const { uploadFiles } = useFolders()
+  const { t, lang } = useT()
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -23,14 +26,18 @@ export function FileUploadZone({ folderId, compact = false }: FileUploadZoneProp
       setBusy(true)
       try {
         await uploadFiles(folderId, arr)
-        toast.success(arr.length === 1 ? `Added ${arr[0].name}` : `Added ${arr.length} files`)
+        toast.success(
+          arr.length === 1
+            ? t("upload.toastAddedOne", { name: arr[0].name })
+            : t("upload.toastAddedN", { n: localizeNumber(arr.length, lang) }),
+        )
       } catch {
-        toast.error("Upload failed")
+        toast.error(t("toast.uploadFailed"))
       } finally {
         setBusy(false)
       }
     },
-    [folderId, uploadFiles],
+    [folderId, uploadFiles, t, lang],
   )
 
   return (
@@ -83,10 +90,14 @@ export function FileUploadZone({ folderId, compact = false }: FileUploadZoneProp
         </div>
         <div className={compact ? "flex flex-col items-start" : ""}>
           <p className="text-sm text-white/80">
-            {busy ? "Reading files..." : isDragging ? "Drop to upload" : "Click or drop files"}
+            {busy
+              ? t("upload.reading")
+              : isDragging
+                ? t("upload.dropToUpload")
+                : t("upload.clickOrDrop")}
           </p>
           {!compact && (
-            <p className="text-xs text-white/40 mt-0.5">Images, videos, documents — anything goes</p>
+            <p className="text-xs text-white/40 mt-0.5">{t("upload.helperText")}</p>
           )}
         </div>
       </div>

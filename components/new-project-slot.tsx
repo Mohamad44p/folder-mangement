@@ -1,16 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useT } from "@/contexts/i18n-context"
 
 interface NewProjectSlotProps {
   onClick?: () => void
 }
 
 export function NewProjectSlot({ onClick }: NewProjectSlotProps) {
+  const { t } = useT()
   const [isHovered, setIsHovered] = useState(false)
   const [displayedText, setDisplayedText] = useState("")
   const [isTypingComplete, setIsTypingComplete] = useState(false)
-  const fullText = "Click to start..."
+  const fullText = t("card.clickToStart")
 
   useEffect(() => {
     if (isHovered) {
@@ -81,16 +83,16 @@ export function NewProjectSlot({ onClick }: NewProjectSlotProps) {
             transformStyle: "preserve-3d",
             transformOrigin: "center bottom",
             transform: isHovered ? "rotateX(15deg)" : "rotateX(0deg)",
-            background: "#1e1e1e",
-            border: "1px dashed rgba(255, 255, 255, 0.06)",
+            background: "var(--card-back-bg)",
+            border: "1px dashed var(--card-border-dashed)",
           }}
         ></div>
 
         <div
           className="absolute bottom-0 left-0 right-0 z-10 rounded-2xl overflow-hidden transition-all duration-500"
           style={{
-            background: "rgba(26, 26, 26, 0.8)",
-            border: "1px dashed rgba(255, 255, 255, 0.06)",
+            background: "var(--card-front-bg)",
+            border: "1px dashed var(--card-border-dashed)",
             transformStyle: "preserve-3d",
             transformOrigin: "center bottom",
             transform: isHovered ? "rotateX(-25deg)" : "rotateX(0deg)",
@@ -98,14 +100,14 @@ export function NewProjectSlot({ onClick }: NewProjectSlotProps) {
         >
           <div className="relative py-4 px-4">
             <h3 className="font-semibold text-white/70 text-base leading-snug line-clamp-2 min-h-[2.75rem] transition-colors duration-300 group-hover:text-white">
-              New Project
+              {t("card.newProject")}
             </h3>
           </div>
           <div className="relative h-[48px]">
             <div className="absolute inset-x-0 top-0 h-[1px] border-t border-dashed border-white/[0.04]" />
             <div className="absolute inset-0 flex items-center justify-between px-4">
               <span className="text-[13px] text-white/40 transition-colors duration-300 group-hover:text-white/60">
-                Generate AI Clips
+                {t("card.generateAi")}
               </span>
             </div>
           </div>

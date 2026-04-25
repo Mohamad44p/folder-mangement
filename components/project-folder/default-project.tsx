@@ -7,6 +7,9 @@ import type { ImagePosition } from "./types"
 import { SlotNumber } from "./slot-number"
 import { MenuButton } from "./menu-button"
 import { Sparkles } from "./sparkles"
+import { useSettings } from "@/contexts/settings-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeTitle, localizeNumber } from "@/lib/localize"
 
 // Rauno-style easing: smooth deceleration
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
@@ -25,7 +28,7 @@ interface DefaultProjectProps {
   showImages: boolean
   showGeneratingFooter: boolean
   imagePositions: ImagePosition[]
-  clipCount: number
+  fileCount: number
   remainingEta: string
   formattedDate: string
   onRemove?: () => void
@@ -44,7 +47,7 @@ export function DefaultProject({
   showImages,
   showGeneratingFooter,
   imagePositions,
-  clipCount,
+  fileCount,
   remainingEta,
   formattedDate,
   onRemove,
@@ -52,7 +55,27 @@ export function DefaultProject({
   onRename,
 }: DefaultProjectProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  
+  const { theme } = useSettings()
+  const { t, lang } = useT()
+  const localizedTitle = localizeTitle(project, t)
+  const isLight = theme === "light"
+  const cardBackBg = isLight ? "#ebebeb" : "#1e1e1e"
+  const cardBackBgGenerating = isLight ? "#e0e0e0" : "#111111"
+  const cardFrontBg = isLight ? "rgba(255, 255, 255, 0.85)" : "rgba(26, 26, 26, 0.8)"
+  const cardFrontBgGenerating = isLight ? "rgba(245, 245, 245, 0.9)" : "rgba(20, 20, 20, 0.85)"
+  const cardBorderThin = isLight ? "1px solid rgba(0, 0, 0, 0.08)" : "1px solid rgba(255, 255, 255, 0.06)"
+  const editGlow = isLight
+    ? "radial-gradient(ellipse 100% 80% at 50% 0%, rgba(60,120,200,0.18) 0%, transparent 60%)"
+    : "radial-gradient(ellipse 100% 80% at 50% 0%, rgba(120,180,255,0.15) 0%, transparent 60%)"
+  const editShine = isLight
+    ? "linear-gradient(180deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.01) 100%)"
+    : "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)"
+  const editShineLine = isLight
+    ? "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.25) 50%, transparent 100%)"
+    : "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)"
+  const fileChipBg = isLight ? "rgba(0, 0, 0, 0.06)" : "rgba(255, 255, 255, 0.07)"
+  const deleteBackdropBg = isLight ? "#ffffff" : "#0a0a0a"
+
   const handleMenuOpenChange = (open: boolean) => {
     setIsMenuOpen(open)
     // When menu closes, reset hover state since mouse likely moved outside
@@ -86,10 +109,11 @@ export function DefaultProject({
     }
   }, [isEditing])
 
-  // Sync editTitle when project title changes
+  // Sync editTitle when project title changes (use localized label so the
+  // user sees Arabic title when editing in Arabic mode)
   useEffect(() => {
-    setEditTitle(project.title)
-  }, [project.title])
+    setEditTitle(localizedTitle)
+  }, [localizedTitle])
 
   // Close editing when clicking outside - use ref to track the container
   const containerRef = useRef<HTMLDivElement>(null)
@@ -130,13 +154,13 @@ export function DefaultProject({
   }, [showDeleteConfirm, isDeleting])
 
   const handleEditClick = () => {
-    setEditTitle(project.title)
+    setEditTitle(localizedTitle)
     setIsEditing(true)
   }
 
   const handleConfirmEdit = () => {
     const trimmedTitle = editTitle.trim()
-    if (trimmedTitle && trimmedTitle !== project.title) {
+    if (trimmedTitle && trimmedTitle !== localizedTitle) {
       onRename?.(trimmedTitle)
     }
     setIsEditing(false)
@@ -148,7 +172,7 @@ export function DefaultProject({
   }
 
   const handleCancelEdit = () => {
-    setEditTitle(project.title)
+    setEditTitle(localizedTitle)
     setIsEditing(false)
     setIsMenuOpen(false)
     setIsHovered(false)
@@ -242,7 +266,7 @@ export function DefaultProject({
           className="relative z-0 rounded-2xl"
           animate={{
             rotateX: isActive ? 15 : 0,
-            backgroundColor: isGenerating ? "#111111" : "#1e1e1e",
+            backgroundColor: isGenerating ? cardBackBgGenerating : cardBackBg,
           }}
           transition={{
             rotateX: {
@@ -258,7 +282,7 @@ export function DefaultProject({
           }}
           style={{
             height: "224px",
-            border: "1px solid rgba(255, 255, 255, 0.06)",
+            border: cardBorderThin,
             transformStyle: "preserve-3d",
             transformOrigin: "center bottom",
           }}
@@ -352,7 +376,7 @@ export function DefaultProject({
           className="absolute bottom-0 left-0 right-0 z-10 rounded-2xl overflow-hidden"
           animate={{
             rotateX: isActive ? -25 : 0,
-            backgroundColor: isGenerating ? "rgba(20, 20, 20, 0.85)" : "rgba(26, 26, 26, 0.8)",
+            backgroundColor: isGenerating ? cardFrontBgGenerating : cardFrontBg,
           }}
           transition={{
             rotateX: {
@@ -369,33 +393,33 @@ export function DefaultProject({
           style={{
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
-            border: "1px solid rgba(255, 255, 255, 0.06)",
+            border: cardBorderThin,
             transformStyle: "preserve-3d",
             transformOrigin: "center bottom",
           }}
         >
           <div className="relative py-4 px-4 min-h-[2.75rem]">
             {/* Edit mode glow effect - Rauno style */}
-            <div 
+            <div
               className="absolute -inset-2 transition-all duration-500 rounded-t-2xl pointer-events-none"
               style={{
                 opacity: isEditing ? 1 : 0,
-                background: 'radial-gradient(ellipse 100% 80% at 50% 0%, rgba(120,180,255,0.15) 0%, transparent 60%)',
+                background: editGlow,
                 filter: 'blur(12px)',
               }}
             />
-            <div 
+            <div
               className="absolute -inset-px transition-all duration-500 rounded-t-lg pointer-events-none overflow-hidden"
               style={{
                 opacity: isEditing ? 1 : 0,
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)',
+                background: editShine,
               }}
             />
-            <div 
+            <div
               className="absolute inset-x-2 -top-1 h-px transition-all duration-500 pointer-events-none"
               style={{
                 opacity: isEditing ? 1 : 0,
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
+                background: editShineLine,
                 filter: 'blur(0.5px)',
               }}
             />
@@ -403,7 +427,7 @@ export function DefaultProject({
               className={`font-semibold text-white/70 text-base leading-snug line-clamp-2 min-h-[2.75rem] relative z-0 transition-all duration-200 ${!isGenerating ? "group-hover:text-white" : ""}`}
               style={{ opacity: isEditing ? 0 : 1, pointerEvents: isEditing ? "none" : "auto" }}
             >
-              {project.title}
+              {localizedTitle}
             </h3>
             <textarea
               ref={textareaRef}
@@ -455,7 +479,7 @@ export function DefaultProject({
                         handleCancelEdit()
                       }}
                     >
-                      Cancel
+                      {t("action.cancel")}
                     </button>
                     <button
                       className="px-3 py-1.5 rounded-full text-[12px] font-medium text-black bg-white hover:bg-white/90 transition-colors"
@@ -464,7 +488,7 @@ export function DefaultProject({
                         handleConfirmEdit()
                       }}
                     >
-                      Save
+                      {t("action.save")}
                     </button>
                   </div>
                 </motion.div>
@@ -493,7 +517,7 @@ export function DefaultProject({
                     >
                       <path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" />
                     </motion.svg>
-                    <span className="text-[13px] text-transparent bg-clip-text bg-gradient-to-r from-white/50 via-white/80 to-white/50 bg-[length:200%_100%] animate-shimmer">Generating</span>
+                    <span className="text-[13px] text-transparent bg-clip-text bg-gradient-to-r from-white/50 via-white/80 to-white/50 bg-[length:200%_100%] animate-shimmer">{t("card.generating")}</span>
                     {progress < 95 && <span className="text-[13px] text-white/50">{remainingEta}</span>}
                   </div>
                   <MenuButton project={project} onOpenChange={handleMenuOpenChange} onRemove={handleDeleteClick} onCancel={onCancel} onRename={handleEditClick} isVisible={true} />
@@ -513,8 +537,8 @@ export function DefaultProject({
                   }}
                 >
                   <div className="flex items-center gap-1.5">
-                    <SlotNumber value={clipCount} isSpinning={false} />
-                    <span className="text-[13px] text-white/60">clips</span>
+                    <SlotNumber value={fileCount} isSpinning={false} />
+                    <span className="text-[13px] text-white/60">{t("card.files")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-white/50">{formattedDate}</span>
@@ -540,7 +564,7 @@ export function DefaultProject({
           <div
             className="absolute inset-0 rounded-2xl"
             style={{
-              background: "#0a0a0a",
+              background: deleteBackdropBg,
               animation: "backdropFadeIn 300ms ease-out forwards",
             }}
           />
@@ -693,38 +717,38 @@ export function DefaultProject({
               })}
             </div>
 
-            {/* Clip Count Tag */}
-            <div 
+            {/* File Count Tag */}
+            <div
               className="flex items-center justify-center gap-1 px-2 py-1 rounded-full"
               style={{
                 marginTop: "-20px",
                 zIndex: 10,
-                background: "rgba(255, 255, 255, 0.07)",
+                background: fileChipBg,
                 backdropFilter: "blur(12px)",
                 animation: "crownImageAppear 400ms cubic-bezier(0.34, 1.56, 0.64, 1) 280ms both",
               }}
             >
-              <span className="text-[11px] font-medium text-white/60">{clipCount}</span>
-              <span className="text-[11px] text-white/40">clips</span>
+              <span className="text-[11px] font-medium text-white/60">{localizeNumber(fileCount, lang)}</span>
+              <span className="text-[11px] text-white/40">{t("card.files")}</span>
             </div>
 
             {/* Title */}
             <div className="text-center mt-3 mb-1 px-2">
-              <p className="text-white font-semibold text-[15px] leading-snug line-clamp-2 text-balance">{project.title}</p>
+              <p className="text-white font-semibold text-[15px] leading-snug line-clamp-2 text-balance">{localizedTitle}</p>
             </div>
 
             {/* Subtitle / Deleting state */}
             {isDeleting ? (
               <div className="flex flex-col items-center mb-auto">
                 {isExiting ? (
-                  <p className="text-white/60 text-[13px] font-medium">Deleted</p>
+                  <p className="text-white/60 text-[13px] font-medium">{t("card.deleted")}</p>
                 ) : (
                   <>
-                    <p className="text-white/40 text-[12px]">Deleting...</p>
+                    <p className="text-white/40 text-[12px]">{t("card.deleting")}</p>
                     <div className="w-32 h-1 bg-white/10 rounded-full mt-2 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-100"
-                        style={{ 
+                        style={{
                           width: `${deleteProgress}%`,
                           backgroundColor: "oklch(0.5801 0.227 25.12)"
                         }}
@@ -734,7 +758,7 @@ export function DefaultProject({
                 )}
               </div>
             ) : (
-              <p className="text-white/40 text-[12px] mb-auto">Project will be permanently deleted</p>
+              <p className="text-white/40 text-[12px] mb-auto">{t("card.willBeDeleted")}</p>
             )}
 
             {/* Buttons */}
@@ -747,7 +771,7 @@ export function DefaultProject({
                     cancelDeleteCountdown()
                   }}
                 >
-                  Cancel
+                  {t("action.cancel")}
                 </button>
               ) : (
                 <>
@@ -759,7 +783,7 @@ export function DefaultProject({
                       setIsHovered(false)
                     }}
                   >
-                    Cancel
+                    {t("action.cancel")}
                   </button>
                   <button
                     className="flex-1 py-2 rounded-full text-white text-[13px] font-medium transition-all duration-300 ease-out active:scale-[0.97]"
@@ -775,7 +799,7 @@ export function DefaultProject({
                       startDeleteCountdown()
                     }}
                   >
-                    Delete
+                    {t("folder.delete")}
                   </button>
                 </>
               )}

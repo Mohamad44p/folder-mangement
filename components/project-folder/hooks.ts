@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from "react"
 import type { Project } from "@/lib/data"
 import type { ImagePosition } from "./types"
+import { useT } from "@/contexts/i18n-context"
+import { formatDateLocalized, localizeNumber } from "@/lib/localize"
 
 interface UseProjectStateProps {
   project: Project
@@ -11,6 +13,7 @@ interface UseProjectStateProps {
 }
 
 export function useProjectState({ project, index, generationDuration }: UseProjectStateProps) {
+  const { t, lang } = useT()
   const [isHovered, setIsHovered] = useState(false)
   const [generationComplete, setGenerationComplete] = useState(false)
   const [progress, setProgress] = useState(project.progress || 0)
@@ -45,10 +48,11 @@ export function useProjectState({ project, index, generationDuration }: UseProje
 
   const remainingEta = useMemo(() => {
     const remaining = Math.max(0, Math.ceil((100 - progress) / 10))
-    return "~" + remaining + "s"
-  }, [progress])
+    const num = localizeNumber(remaining, lang)
+    return lang === "ar" ? "~" + num + "ث" : "~" + num + "s"
+  }, [progress, lang])
 
-  const clipCount = project.clipCount
+  const fileCount = project.fileCount
 
   const imagePositions = useMemo<ImagePosition[]>(() => {
     const count = 5
@@ -70,15 +74,8 @@ export function useProjectState({ project, index, generationDuration }: UseProje
     const now = new Date()
     const hoursAgo = index * 24 + Math.floor(project.title.charCodeAt(0) % 20)
     const date = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000)
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    const month = months[date.getMonth()]
-    const day = date.getDate()
-    const hours = date.getHours()
-    const minutes = date.getMinutes().toString().padStart(2, "0")
-    const ampm = hours >= 12 ? "PM" : "AM"
-    const displayHours = hours % 12 || 12
-    return month + " " + day + " · " + displayHours + ":" + minutes + " " + ampm
-  }, [project.title, index])
+    return formatDateLocalized(date, t, lang)
+  }, [project.title, index, t, lang])
 
   const isGenerating = !!(project.isGenerating && !generationComplete)
 
@@ -91,7 +88,7 @@ export function useProjectState({ project, index, generationDuration }: UseProje
     showImages,
     showGeneratingFooter,
     isGenerating,
-    clipCount,
+    fileCount,
     remainingEta,
     formattedDate,
     imagePositions,

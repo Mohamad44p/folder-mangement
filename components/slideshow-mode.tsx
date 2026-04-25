@@ -1,19 +1,21 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber, localizeTitle } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import { Pause, Play, ChevronLeft, ChevronRight, X, Gauge } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-const SPEEDS = [
-  { ms: 2000, label: "2s" },
-  { ms: 4000, label: "4s" },
-  { ms: 6000, label: "6s" },
-  { ms: 10_000, label: "10s" },
-]
-
 export function SlideshowMode() {
   const { slideshow, stopSlideshow, getFolder } = useFolders()
+  const { t, lang } = useT()
+  const SPEEDS = [
+    { ms: 2000, label: localizeNumber(2, lang) + (lang === "ar" ? "ث" : "s") },
+    { ms: 4000, label: localizeNumber(4, lang) + (lang === "ar" ? "ث" : "s") },
+    { ms: 6000, label: localizeNumber(6, lang) + (lang === "ar" ? "ث" : "s") },
+    { ms: 10_000, label: localizeNumber(10, lang) + (lang === "ar" ? "ث" : "s") },
+  ]
   const [idx, setIdx] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [speedMs, setSpeedMs] = useState(4000)
@@ -76,12 +78,12 @@ export function SlideshowMode() {
             className="fixed inset-0 z-[420] flex items-center justify-center bg-black/95"
           >
             <div className="text-center">
-              <p className="text-white/70 text-sm">No images to show</p>
+              <p className="text-white/70 text-sm">{t("slideshow.noImages")}</p>
               <button
                 onClick={stopSlideshow}
                 className="mt-3 px-3 py-1.5 rounded-full text-[12px] bg-white/[0.08] text-white"
               >
-                Close
+                {t("action.close")}
               </button>
             </div>
           </motion.div>
@@ -123,7 +125,11 @@ export function SlideshowMode() {
             <div className="flex-1 min-w-0">
               <div className="text-[14px] text-white truncate">{current.name}</div>
               <div className="text-[11px] text-white/40 truncate">
-                {folder?.title} · {idx + 1} / {images.length}
+                {t("slideshow.subtitle", {
+                  folder: folder ? localizeTitle(folder, t) : "",
+                  i: localizeNumber(idx + 1, lang),
+                  n: localizeNumber(images.length, lang),
+                })}
               </div>
             </div>
             <div className="flex items-center gap-1.5 bg-black/50 rounded-full px-2 border border-white/[0.06]">

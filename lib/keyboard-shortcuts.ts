@@ -1,23 +1,27 @@
+import type { TranslationKey } from "./i18n-dict"
+
 export interface ShortcutDef {
   id: string
   label: string
+  labelKey: TranslationKey
   defaultKeys: string
   category: "Navigation" | "Editing" | "View" | "Selection"
+  categoryKey: TranslationKey
 }
 
 export const SHORTCUTS: ShortcutDef[] = [
-  { id: "search", label: "Open search palette", defaultKeys: "Mod+K", category: "Navigation" },
-  { id: "newFolder", label: "Create new folder", defaultKeys: "Mod+N", category: "Editing" },
-  { id: "newTemplate", label: "New from template", defaultKeys: "Mod+Shift+N", category: "Editing" },
-  { id: "closeFolder", label: "Close current folder", defaultKeys: "Escape", category: "Navigation" },
-  { id: "reopenClosed", label: "Reopen recently closed", defaultKeys: "Mod+Shift+T", category: "Navigation" },
-  { id: "toggleSidebar", label: "Toggle sidebar", defaultKeys: "Mod+B", category: "View" },
-  { id: "toggleSettings", label: "Open settings", defaultKeys: "Mod+,", category: "View" },
-  { id: "selectAll", label: "Select all files", defaultKeys: "Mod+A", category: "Selection" },
-  { id: "deleteSelected", label: "Delete selection", defaultKeys: "Delete", category: "Editing" },
-  { id: "favorite", label: "Toggle favorite", defaultKeys: "F", category: "Editing" },
-  { id: "rename", label: "Rename", defaultKeys: "F2", category: "Editing" },
-  { id: "duplicate", label: "Duplicate", defaultKeys: "Mod+D", category: "Editing" },
+  { id: "search", label: "Open search palette", labelKey: "shortcuts.action.search", defaultKeys: "Mod+K", category: "Navigation", categoryKey: "shortcuts.cat.navigation" },
+  { id: "newFolder", label: "Create new folder", labelKey: "shortcuts.action.createNewFolder", defaultKeys: "Mod+N", category: "Editing", categoryKey: "shortcuts.cat.editing" },
+  { id: "newTemplate", label: "New from template", labelKey: "shortcuts.action.newFromTemplate", defaultKeys: "Mod+Shift+N", category: "Editing", categoryKey: "shortcuts.cat.editing" },
+  { id: "closeFolder", label: "Close current folder", labelKey: "shortcuts.action.closeFolder", defaultKeys: "Escape", category: "Navigation", categoryKey: "shortcuts.cat.navigation" },
+  { id: "reopenClosed", label: "Reopen recently closed", labelKey: "shortcuts.action.reopenRecent", defaultKeys: "Mod+Shift+T", category: "Navigation", categoryKey: "shortcuts.cat.navigation" },
+  { id: "toggleSidebar", label: "Toggle sidebar", labelKey: "shortcuts.action.toggleSidebar", defaultKeys: "Mod+B", category: "View", categoryKey: "shortcuts.cat.view" },
+  { id: "toggleSettings", label: "Open settings", labelKey: "shortcuts.action.toggleSettings", defaultKeys: "Mod+,", category: "View", categoryKey: "shortcuts.cat.view" },
+  { id: "selectAll", label: "Select all files", labelKey: "shortcuts.action.selectAllFiles", defaultKeys: "Mod+A", category: "Selection", categoryKey: "shortcuts.cat.selection" },
+  { id: "deleteSelected", label: "Delete selection", labelKey: "shortcuts.action.deleteSelection", defaultKeys: "Delete", category: "Editing", categoryKey: "shortcuts.cat.editing" },
+  { id: "favorite", label: "Toggle favorite", labelKey: "shortcuts.action.favorite", defaultKeys: "F", category: "Editing", categoryKey: "shortcuts.cat.editing" },
+  { id: "rename", label: "Rename", labelKey: "shortcuts.action.rename", defaultKeys: "F2", category: "Editing", categoryKey: "shortcuts.cat.editing" },
+  { id: "duplicate", label: "Duplicate", labelKey: "shortcuts.action.duplicate", defaultKeys: "Mod+D", category: "Editing", categoryKey: "shortcuts.cat.editing" },
 ]
 
 export function matchKeys(e: KeyboardEvent, keys: string): boolean {

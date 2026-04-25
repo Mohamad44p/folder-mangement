@@ -1,4 +1,9 @@
-# AI clipsXXX (books)
+# Folders — visual folder management
+
+A dark-mode folder grid UI for organizing files. Each card shows the folder
+name, file count, last-updated timestamp, and a stack of preview thumbnails.
+Includes nested subfolders, smart folders, drag-and-drop, bulk actions, and
+trash recovery.
 
 *Automatically synced with your [v0.app](https://v0.app) deployments*
 

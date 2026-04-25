@@ -2,6 +2,7 @@
 
 import { Folder, FileSearch, Inbox, Sparkles, Trash2 } from "lucide-react"
 import type { ReactNode } from "react"
+import { useT } from "@/contexts/i18n-context"
 
 interface EmptyStateProps {
   icon?: ReactNode
@@ -38,42 +39,46 @@ export function EmptyState({ icon, title, description, action, variant = "defaul
 }
 
 export function EmptyFolders() {
+  const { t } = useT()
   return (
     <EmptyState
       icon={<Folder className="size-6 text-white/40" />}
-      title="No folders yet"
-      description="Click + New to create one, or use a template."
+      title={t("empty.folders")}
+      description={t("empty.foldersDesc")}
     />
   )
 }
 
 export function EmptySearch({ q }: { q: string }) {
+  const { t } = useT()
   return (
     <EmptyState
       icon={<FileSearch className="size-6 text-white/40" />}
-      title={`No matches for "${q}"`}
-      description="Try a different search term or clear the filter."
+      title={t("empty.search", { q })}
+      description={t("empty.searchDesc")}
     />
   )
 }
 
 export function EmptyTrash() {
+  const { t } = useT()
   return (
     <EmptyState
       icon={<Trash2 className="size-6 text-white/40" />}
-      title="Trash is empty"
-      description="Deleted folders show up here for 30 days."
+      title={t("trash.empty")}
+      description={t("empty.trashDesc2")}
       variant="compact"
     />
   )
 }
 
 export function EmptySmart() {
+  const { t } = useT()
   return (
     <EmptyState
       icon={<Sparkles className="size-5 text-violet-300" />}
-      title="No matches yet"
-      description="Edit the rules or upload more files."
+      title={t("empty.smartNoMatches")}
+      description={t("empty.smartNoMatchesDesc")}
     />
   )
 }

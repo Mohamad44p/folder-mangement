@@ -1,6 +1,7 @@
 "use client"
 
 import { renderMarkdown } from "@/lib/markdown"
+import { useT } from "@/contexts/i18n-context"
 import { Eye, Edit3 } from "lucide-react"
 import { useState } from "react"
 
@@ -10,6 +11,7 @@ interface NotesEditorProps {
 }
 
 export function NotesEditor({ value, onSave }: NotesEditorProps) {
+  const { t } = useT()
   const [draft, setDraft] = useState(value)
   const [mode, setMode] = useState<"view" | "edit">(value ? "view" : "edit")
   const [dirty, setDirty] = useState(false)
@@ -17,8 +19,8 @@ export function NotesEditor({ value, onSave }: NotesEditorProps) {
   return (
     <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] overflow-hidden">
       <div className="px-3 py-2 border-b border-white/[0.06] flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-wider text-white/40">Notes</span>
-        <div className="ml-auto flex items-center gap-1">
+        <span className="text-[11px] uppercase tracking-wider text-white/40">{t("notes.label")}</span>
+        <div className="ms-auto flex items-center gap-1">
           <button
             onClick={() => setMode("view")}
             className={`h-6 px-2 rounded text-[11px] flex items-center gap-1 transition-colors ${
@@ -26,7 +28,7 @@ export function NotesEditor({ value, onSave }: NotesEditorProps) {
             }`}
           >
             <Eye className="size-3" />
-            View
+            {t("notes.view")}
           </button>
           <button
             onClick={() => setMode("edit")}
@@ -35,7 +37,7 @@ export function NotesEditor({ value, onSave }: NotesEditorProps) {
             }`}
           >
             <Edit3 className="size-3" />
-            Edit
+            {t("notes.editLabel")}
           </button>
         </div>
       </div>
@@ -48,7 +50,7 @@ export function NotesEditor({ value, onSave }: NotesEditorProps) {
                 setDraft(e.target.value)
                 setDirty(e.target.value !== value)
               }}
-              placeholder="# Heading\n**bold** *italic* `code` [link](url)\n- list item"
+              placeholder={t("notes.placeholder2")}
               rows={8}
               className="w-full bg-transparent border-none text-[13px] font-mono text-white placeholder:text-white/30 focus:outline-none resize-y"
             />
@@ -61,7 +63,7 @@ export function NotesEditor({ value, onSave }: NotesEditorProps) {
                   }}
                   className="px-3 py-1 rounded-full text-[11px] text-white/60 hover:text-white hover:bg-white/[0.06]"
                 >
-                  Cancel
+                  {t("action.cancel")}
                 </button>
                 <button
                   onClick={() => {
@@ -71,7 +73,7 @@ export function NotesEditor({ value, onSave }: NotesEditorProps) {
                   }}
                   className="px-3 py-1 rounded-full text-[11px] font-medium text-black bg-white hover:bg-white/90"
                 >
-                  Save
+                  {t("action.save")}
                 </button>
               </div>
             )}
@@ -79,7 +81,7 @@ export function NotesEditor({ value, onSave }: NotesEditorProps) {
         ) : draft.trim() ? (
           <div>{renderMarkdown(draft)}</div>
         ) : (
-          <p className="text-[13px] text-white/30 italic">No notes yet. Switch to Edit to add some.</p>
+          <p className="text-[13px] text-white/30 italic">{t("notes.emptySwitch")}</p>
         )}
       </div>
     </div>

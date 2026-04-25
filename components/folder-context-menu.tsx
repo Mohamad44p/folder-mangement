@@ -2,6 +2,7 @@
 
 import * as ContextMenu from "@radix-ui/react-context-menu"
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
 import {
   Star, Pin, Pencil, Copy, ArrowRightLeft, Share2, Trash2, Lock, Unlock, Archive,
   Sparkles, Workflow, Eye, Plus,
@@ -32,6 +33,7 @@ export function FolderContextMenu({
     openFolder,
     addTab,
   } = useFolders()
+  const { t } = useT()
   const folder = getFolder(folderId)
   if (!folder) return <>{children}</>
 
@@ -41,39 +43,39 @@ export function FolderContextMenu({
       <ContextMenu.Portal>
         <ContextMenu.Content className="z-[300] min-w-[200px] rounded-xl bg-[#1a1a1a] border border-white/[0.08] shadow-2xl p-1.5">
           <Item icon={<Eye className="size-3.5" />} onSelect={() => openFolder(folderId)}>
-            Open
+            {t("action.open")}
           </Item>
           <Item icon={<Plus className="size-3.5" />} onSelect={() => addTab(folderId)}>
-            Open in new tab
+            {t("ctx.openInNewTab")}
           </Item>
           <Sep />
           <Item
             icon={<Star className={`size-3.5 ${folder.favorite ? "fill-yellow-300 text-yellow-300" : ""}`} />}
             onSelect={() => toggleFolderFavorite(folderId)}
           >
-            {folder.favorite ? "Unfavorite" : "Favorite"}
+            {t(folder.favorite ? "action.unfavorite" : "action.favorite")}
           </Item>
           <Item
             icon={<Pin className={`size-3.5 ${folder.pinned ? "text-sky-300" : ""}`} />}
             onSelect={() => toggleFolderPin(folderId)}
           >
-            {folder.pinned ? "Unpin" : "Pin to top"}
+            {t(folder.pinned ? "action.unpin" : "action.pinToTop")}
           </Item>
           <Item
             icon={folder.locked ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
             onSelect={() => {
               setFolderLocked(folderId, !folder.locked)
-              toast.success(folder.locked ? "Unlocked" : "Locked")
+              toast.success(t(folder.locked ? "action.unlocked" : "action.locked"))
             }}
           >
-            {folder.locked ? "Unlock" : "Lock"}
+            {t(folder.locked ? "action.unlock" : "action.lock")}
           </Item>
           <Sep />
           <Item icon={<Copy className="size-3.5" />} onSelect={() => duplicateFolder(folderId)}>
-            Duplicate
+            {t("action.duplicate")}
           </Item>
           <Item icon={<Share2 className="size-3.5" />} onSelect={() => setShareDialogOpen(folderId)}>
-            Share...
+            {t("ctx.share")}
           </Item>
           <Item
             icon={<Sparkles className="size-3.5" />}
@@ -81,34 +83,34 @@ export function FolderContextMenu({
               const sug = aiSuggestCover(folder)
               if (sug) {
                 setFolderCover(folderId, sug)
-                toast.success("Cover suggested")
+                toast.success(t("toast.coverSuggested"))
               }
               for (const file of folder.files ?? []) {
                 if ((file.aiTags?.length ?? 0) === 0) {
                   setFileAiTags(folderId, file.id, aiAutoTagFile(file))
                 }
               }
-              toast.success("AI ran on folder")
+              toast.success(t("ctx.aiRanOn"))
             }}
           >
-            Run AI tagging
+            {t("ctx.runAiTagging")}
           </Item>
           <Sep />
           <Item icon={<Archive className="size-3.5" />} onSelect={() => {
             archiveFolder(folderId)
-            toast.success("Archived")
+            toast.success(t("ctx.archived"))
           }}>
-            Archive
+            {t("ctx.archive")}
           </Item>
           <Item
             icon={<Trash2 className="size-3.5" />}
             destructive
             onSelect={() => {
               deleteFolder(folderId)
-              toast.success("Moved to trash")
+              toast.success(t("toast.movedToTrashShort"))
             }}
           >
-            Move to trash
+            {t("action.moveToTrash")}
           </Item>
         </ContextMenu.Content>
       </ContextMenu.Portal>

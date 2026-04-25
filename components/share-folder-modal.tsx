@@ -1,16 +1,24 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import type { TranslationKey } from "@/lib/i18n-dict"
+import { localizeTitle } from "@/lib/localize"
 import type { SharePermission } from "@/lib/data"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, Copy, Check, Globe, Eye, MessageCircle, Edit3, UserPlus, UserMinus } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
-const PERMISSIONS: { value: SharePermission; label: string; icon: typeof Eye; description: string }[] = [
-  { value: "view", label: "Can view", icon: Eye, description: "View files only" },
-  { value: "comment", label: "Can comment", icon: MessageCircle, description: "View and leave comments" },
-  { value: "edit", label: "Can edit", icon: Edit3, description: "Full read/write access" },
+const PERMISSIONS: {
+  value: SharePermission
+  labelKey: TranslationKey
+  icon: typeof Eye
+  descKey: TranslationKey
+}[] = [
+  { value: "view", labelKey: "share.perm.view", icon: Eye, descKey: "share.perm.viewDesc" },
+  { value: "comment", labelKey: "share.perm.comment", icon: MessageCircle, descKey: "share.perm.commentDesc" },
+  { value: "edit", labelKey: "share.perm.edit", icon: Edit3, descKey: "share.perm.editDesc" },
 ]
 
 export function ShareFolderModal() {
@@ -24,6 +32,7 @@ export function ShareFolderModal() {
     removeSharedWith,
     unshareFolder,
   } = useFolders()
+  const { t } = useT()
   const [copied, setCopied] = useState(false)
   const [inviteName, setInviteName] = useState("")
   const [inviteEmail, setInviteEmail] = useState("")
@@ -37,20 +46,20 @@ export function ShareFolderModal() {
       navigator.clipboard.writeText(share.link)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-      toast.success("Link copied")
+      toast.success(t("toast.linkCopied"))
     } catch {}
   }
 
   const handleEnable = () => {
     if (!folder) return
     shareFolder(String(folder.id), "view")
-    toast.success("Share enabled")
+    toast.success(t("share.enabledToast"))
   }
 
   const handleInvite = () => {
     if (!folder || !inviteName.trim()) return
     addSharedWith(String(folder.id), inviteName.trim(), inviteEmail.trim() || undefined)
-    toast.success(`Invited ${inviteName}`)
+    toast.success(t("share.toastInvited", { name: inviteName }))
     setInviteName("")
     setInviteEmail("")
   }
@@ -84,8 +93,10 @@ export function ShareFolderModal() {
                 {folder.icon ?? "📁"}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-[15px] font-semibold text-white truncate">Share "{folder.title}"</h3>
-                <p className="text-[12px] text-white/40">Invite people or generate a link.</p>
+                <h3 className="text-[15px] font-semibold text-white truncate">
+                  {t("share.title2", { name: localizeTitle(folder, t) })}
+                </h3>
+                <p className="text-[12px] text-white/40">{t("share.subtitle")}</p>
               </div>
               <button
                 onClick={() => setShareDialogOpen(null)}
@@ -103,15 +114,15 @@ export function ShareFolderModal() {
                 >
                   <Globe className="size-4 text-white/60" />
                   <div className="flex-1">
-                    <div className="text-[13px] text-white">Enable sharing</div>
-                    <div className="text-[11px] text-white/40">Generate a shareable link.</div>
+                    <div className="text-[13px] text-white">{t("share.enable")}</div>
+                    <div className="text-[11px] text-white/40">{t("share.enableDesc")}</div>
                   </div>
                 </button>
               ) : (
                 <>
                   {/* Link */}
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">Link</div>
+                    <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">{t("share.linkLabel")}</div>
                     <div className="flex gap-2">
                       <input
                         readOnly
@@ -123,7 +134,7 @@ export function ShareFolderModal() {
                         className="px-3 rounded-lg bg-white text-black hover:bg-white/90 transition-colors flex items-center gap-1.5 text-[12px] font-medium"
                       >
                         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                        {copied ? "Copied" : "Copy"}
+                        {copied ? t("share.copied") : t("share.copy")}
                       </button>
                     </div>
                   </div>
@@ -131,7 +142,7 @@ export function ShareFolderModal() {
                   {/* Permission */}
                   <div>
                     <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">
-                      Anyone with the link
+                      {t("share.linkAccess")}
                     </div>
                     <div className="space-y-1.5">
                       {PERMISSIONS.map((p) => {
@@ -154,8 +165,8 @@ export function ShareFolderModal() {
                               <p.icon className="size-3.5 text-white/70" />
                             </div>
                             <div className="flex-1 text-left">
-                              <div className="text-[12px] text-white">{p.label}</div>
-                              <div className="text-[10px] text-white/40">{p.description}</div>
+                              <div className="text-[12px] text-white">{t(p.labelKey)}</div>
+                              <div className="text-[10px] text-white/40">{t(p.descKey)}</div>
                             </div>
                             {active && (
                               <div className="size-4 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
@@ -171,19 +182,19 @@ export function ShareFolderModal() {
                   {/* Invite */}
                   <div>
                     <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">
-                      Invite people
+                      {t("share.invitePeople")}
                     </div>
                     <div className="flex gap-2 mb-2">
                       <input
                         value={inviteName}
                         onChange={(e) => setInviteName(e.target.value)}
-                        placeholder="Name"
+                        placeholder={t("share.namePlaceholder")}
                         className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-full px-3 py-1.5 text-[12px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20"
                       />
                       <input
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="email@example.com"
+                        placeholder={t("share.invitePlaceholder")}
                         className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-full px-3 py-1.5 text-[12px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20"
                       />
                       <button
@@ -192,7 +203,7 @@ export function ShareFolderModal() {
                         className="px-3 rounded-full bg-white text-black text-[12px] font-medium hover:bg-white/90 disabled:opacity-40 flex items-center gap-1.5"
                       >
                         <UserPlus className="size-3.5" />
-                        Invite
+                        {t("share.invite")}
                       </button>
                     </div>
                     {share.sharedWith.length > 0 && (
@@ -230,11 +241,11 @@ export function ShareFolderModal() {
                     <button
                       onClick={() => {
                         unshareFolder(String(folder.id))
-                        toast.success("Sharing disabled")
+                        toast.success(t("share.disabledToast"))
                       }}
                       className="px-3 py-1.5 rounded-full text-[12px] text-white/60 hover:text-red-400 hover:bg-red-500/10"
                     >
-                      Stop sharing
+                      {t("share.stopSharing")}
                     </button>
                   </div>
                 </>

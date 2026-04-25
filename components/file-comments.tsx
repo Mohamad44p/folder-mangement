@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber } from "@/lib/localize"
 import type { FileComment } from "@/lib/data"
 import { MessageCircle, Send, Trash2, AtSign } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -14,6 +16,7 @@ interface MentionInputProps {
 }
 
 function MentionInput({ value, onChange, onSubmit, mentions, placeholder }: MentionInputProps) {
+  const { t } = useT()
   const [showSuggest, setShowSuggest] = useState(false)
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -46,7 +49,7 @@ function MentionInput({ value, onChange, onSubmit, mentions, placeholder }: Ment
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={2}
-        placeholder={placeholder ?? "Add a comment... use @ to mention"}
+        placeholder={placeholder ?? t("comments.commentPlaceholder")}
         onKeyDown={(e) => {
           if (showSuggest) {
             if (e.key === "ArrowDown") {
@@ -111,18 +114,6 @@ function renderText(text: string): React.ReactNode {
   )
 }
 
-function relTime(iso: string): string {
-  try {
-    const diff = Date.now() - new Date(iso).getTime()
-    const min = Math.round(diff / 60_000)
-    if (min < 1) return "just now"
-    if (min < 60) return `${min}m ago`
-    return `${Math.round(min / 60)}h ago`
-  } catch {
-    return ""
-  }
-}
-
 export function FileCommentsThread({
   folderId,
   fileId,
@@ -131,15 +122,28 @@ export function FileCommentsThread({
   fileId: string
 }) {
   const { getFolder, addFileComment, removeFileComment } = useFolders()
+  const { t, lang } = useT()
   const folder = getFolder(folderId)
   const file = folder?.files?.find((f) => f.id === fileId)
   const [draft, setDraft] = useState("")
 
+  const relTime = (iso: string): string => {
+    try {
+      const diff = Date.now() - new Date(iso).getTime()
+      const min = Math.round(diff / 60_000)
+      if (min < 1) return t("common.justNow")
+      if (min < 60) return t("common.minutesAgo", { n: localizeNumber(min, lang) })
+      return t("common.hoursAgo", { n: localizeNumber(Math.round(min / 60), lang) })
+    } catch {
+      return ""
+    }
+  }
+
   const mentions = useMemo(() => {
-    const set = new Set<string>(["You"])
+    const set = new Set<string>([t("comments.you")])
     folder?.share?.sharedWith.forEach((p) => set.add(p.name))
     return Array.from(set)
-  }, [folder])
+  }, [folder, t])
 
   if (!file) return null
   const comments = file.comments ?? []
@@ -154,28 +158,35 @@ export function FileCommentsThread({
     <div className="space-y-2">
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/40 mb-2">
         <MessageCircle className="size-3" />
-        <span>Comments</span>
-        {comments.length > 0 && <span className="text-white/30">{comments.length}</span>}
+        <span>{t("comments.label")}</span>
+        {comments.length > 0 && (
+          <span className="text-white/30">{localizeNumber(comments.length, lang)}</span>
+        )}
       </div>
       <div className="space-y-1.5">
         {comments.length === 0 && (
-          <p className="text-[12px] text-white/30 italic">No comments yet.</p>
+          <p className="text-[12px] text-white/30 italic">{t("comments.empty2")}</p>
         )}
         {comments.map((c) => (
-          <CommentRow key={c.id} comment={c} onDelete={() => removeFileComment(folderId, fileId, c.id)} />
+          <CommentRow
+            key={c.id}
+            comment={c}
+            onDelete={() => removeFileComment(folderId, fileId, c.id)}
+            relTime={relTime}
+          />
         ))}
       </div>
       <div className="space-y-1.5 pt-2 border-t border-white/[0.04]">
         <MentionInput value={draft} onChange={setDraft} onSubmit={submit} mentions={mentions} />
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-white/30">⌘⏎ to send</span>
+          <span className="text-[10px] text-white/30">{t("comments.sendShortcut")}</span>
           <button
             onClick={submit}
             disabled={!draft.trim()}
             className="px-3 py-1 rounded-full bg-white text-black text-[11px] font-medium hover:bg-white/90 disabled:opacity-40 flex items-center gap-1"
           >
             <Send className="size-3" />
-            Send
+            {t("comments.sendBtn")}
           </button>
         </div>
       </div>
@@ -183,7 +194,15 @@ export function FileCommentsThread({
   )
 }
 
-function CommentRow({ comment, onDelete }: { comment: FileComment; onDelete: () => void }) {
+function CommentRow({
+  comment,
+  onDelete,
+  relTime,
+}: {
+  comment: FileComment
+  onDelete: () => void
+  relTime: (iso: string) => string
+}) {
   const initial = comment.author.charAt(0).toUpperCase()
   return (
     <div className="group flex gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.02]">

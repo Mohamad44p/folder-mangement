@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { MotionConfig } from "framer-motion"
 
 export type Density = "cozy" | "compact" | "spacious"
 export type Theme = "dark" | "light"
@@ -68,15 +69,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement
-    root.style.setProperty("--accent", settings.accent)
-    root.style.setProperty(
-      "--density-gap",
-      settings.density === "compact" ? "0.5rem" : settings.density === "spacious" ? "1.5rem" : "1rem",
-    )
-    root.style.setProperty(
-      "--density-card",
-      settings.density === "compact" ? "0.75" : settings.density === "spacious" ? "1.05" : "1",
-    )
+    // Use a brand-specific custom property so we don't clobber Tailwind/shadcn's --accent token.
+    root.style.setProperty("--accent-user", settings.accent)
+    root.style.setProperty("--accent-user-soft", hexToRgba(settings.accent, 0.18))
+    root.style.setProperty("--accent-user-ring", hexToRgba(settings.accent, 0.6))
+    root.dataset.density = settings.density
     if (settings.reduceMotion) root.dataset.reduceMotion = "true"
     else delete root.dataset.reduceMotion
     root.dataset.theme = settings.theme
@@ -95,9 +92,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setLanguage: (v) => setSettings((s) => ({ ...s, language: v })),
       }}
     >
-      {children}
+      <MotionConfig reducedMotion={settings.reduceMotion ? "always" : "never"}>
+        {children}
+      </MotionConfig>
     </SettingsContext.Provider>
   )
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#?([a-f\d]{3}|[a-f\d]{6})$/i.exec(hex.trim())
+  if (!m) return `rgba(255,255,255,${alpha})`
+  let h = m[1]
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("")
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 export function useSettings() {

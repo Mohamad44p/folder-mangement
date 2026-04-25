@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeTag } from "@/lib/localize"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { X, Plus } from "lucide-react"
 
@@ -11,8 +13,10 @@ interface TagInputProps {
   size?: "sm" | "md"
 }
 
-export function TagInput({ value, onChange, placeholder = "Add a tag...", size = "md" }: TagInputProps) {
+export function TagInput({ value, onChange, placeholder, size = "md" }: TagInputProps) {
   const { allTags } = useFolders()
+  const { t } = useT()
+  const ph = placeholder ?? t("tagInput.placeholder2")
   const [draft, setDraft] = useState("")
   const [showSuggest, setShowSuggest] = useState(false)
   const [active, setActive] = useState(0)
@@ -38,15 +42,15 @@ export function TagInput({ value, onChange, placeholder = "Add a tag...", size =
   }, [])
 
   const addTag = (tag: string) => {
-    const t = tag.trim()
-    if (!t || value.includes(t)) return
-    onChange([...value, t])
+    const trimmed = tag.trim()
+    if (!trimmed || value.includes(trimmed)) return
+    onChange([...value, trimmed])
     setDraft("")
     inputRef.current?.focus()
   }
 
   const removeTag = (tag: string) => {
-    onChange(value.filter((t) => t !== tag))
+    onChange(value.filter((t2) => t2 !== tag))
   }
 
   const handleKey = (e: React.KeyboardEvent) => {
@@ -78,16 +82,16 @@ export function TagInput({ value, onChange, placeholder = "Add a tag...", size =
       <div
         className={`flex items-center gap-1.5 flex-wrap rounded-full bg-white/[0.03] border border-white/[0.08] ${padding}`}
       >
-        {value.map((t) => (
+        {value.map((tag) => (
           <span
-            key={t}
+            key={tag}
             className={`px-2 py-0.5 rounded-full bg-white/[0.06] ${fontSize} text-white/80 flex items-center gap-1`}
           >
-            {t}
+            {localizeTag(tag, t)}
             <button
-              onClick={() => removeTag(t)}
+              onClick={() => removeTag(tag)}
               className="text-white/40 hover:text-white"
-              aria-label={`Remove ${t}`}
+              aria-label={t("tagInput.removeAria", { tag })}
             >
               <X className="size-2.5" />
             </button>
@@ -99,7 +103,7 @@ export function TagInput({ value, onChange, placeholder = "Add a tag...", size =
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKey}
           onFocus={() => setShowSuggest(true)}
-          placeholder={value.length === 0 ? placeholder : ""}
+          placeholder={value.length === 0 ? ph : ""}
           className={`flex-1 min-w-[80px] bg-transparent border-none ${fontSize} text-white placeholder:text-white/30 focus:outline-none`}
         />
       </div>
@@ -115,7 +119,7 @@ export function TagInput({ value, onChange, placeholder = "Add a tag...", size =
                 idx === active ? "bg-white/[0.06] text-white" : "text-white/70 hover:bg-white/[0.04]"
               }`}
             >
-              <span>{s}</span>
+              <span>{localizeTag(s, t)}</span>
               <Plus className="size-3 text-white/30" />
             </button>
           ))}

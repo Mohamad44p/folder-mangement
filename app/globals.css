@@ -193,8 +193,29 @@
 }
 
 @theme {
-  --font-sans: "Inter", "Inter Fallback", system-ui, sans-serif;
+  --font-sans: var(--font-latin), "Inter", "Inter Fallback", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback";
+}
+
+/* When the page is in Arabic, swap the sans-serif stack to a proper Arabic
+   webfont (Cairo) so every element that uses `font-sans` (the default) and
+   any inherited text gets correct shaping and metrics. */
+html[lang="ar"],
+html[lang="ar"] body,
+[dir="rtl"],
+[dir="rtl"] body {
+  font-family: var(--font-arabic), "Cairo", "Segoe UI", "Tahoma", system-ui, sans-serif;
+}
+
+html[lang="ar"] *,
+[dir="rtl"] * {
+  font-family: inherit;
+}
+
+/* Keep monospace columns mono so numeric stats stay aligned. */
+html[lang="ar"] .font-mono,
+[dir="rtl"] .font-mono {
+  font-family: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
 }
 
 @layer base {
@@ -242,14 +263,18 @@
   }
 
   /* Light scrollbars */
-  [data-theme="light"] {
-    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  [data-theme="light"],
+  [data-theme="light"] * {
+    scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
   }
   [data-theme="light"] *::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.12);
+    background-color: rgba(0, 0, 0, 0.14);
   }
   [data-theme="light"] *::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0, 0, 0, 0.22);
+    background-color: rgba(0, 0, 0, 0.26);
+  }
+  [data-theme="light"] *::-webkit-scrollbar-thumb:active {
+    background-color: rgba(0, 0, 0, 0.36);
   }
 }
 
@@ -277,6 +302,59 @@
   --primary-bg: #ffffff;
   --primary-bg-hover: rgba(255, 255, 255, 0.9);
   --shadow-overlay: rgba(0, 0, 0, 0.7);
+
+  /* Card surfaces */
+  --card-back-bg: #1e1e1e;
+  --card-back-bg-generating: #111111;
+  --card-front-bg: rgba(26, 26, 26, 0.8);
+  --card-front-bg-generating: rgba(20, 20, 20, 0.85);
+  --card-border-thin: rgba(255, 255, 255, 0.06);
+  --card-border-dashed: rgba(255, 255, 255, 0.06);
+  --file-chip-bg: rgba(255, 255, 255, 0.07);
+
+  /* Edit-mode shine */
+  --edit-glow: rgba(120, 180, 255, 0.15);
+  --edit-shine-from: rgba(255, 255, 255, 0.08);
+  --edit-shine-to: rgba(255, 255, 255, 0.02);
+  --edit-shine-line: rgba(255, 255, 255, 0.4);
+
+  /* Loader */
+  --loader-bg: #0a0a0a;
+  --loader-track: rgba(255, 255, 255, 0.05);
+  --loader-track-border: rgba(255, 255, 255, 0.1);
+  --loader-line: rgba(255, 255, 255, 0.8);
+  --loader-line-glow: rgba(255, 255, 255, 0.5);
+  --loader-progress-active: rgba(255, 255, 255, 0.5);
+  --loader-progress-inactive: rgba(255, 255, 255, 0.1);
+  --loader-bar-bg: rgba(255, 255, 255, 0.1);
+  --loader-bar-fill: rgba(255, 255, 255, 0.6);
+  --loader-fill-grad: rgba(255, 255, 255, 0.1);
+
+  /* Failed card */
+  --failed-bg-from: rgba(220, 38, 38, 0.04);
+  --failed-bg-to: rgba(127, 29, 29, 0.02);
+  --failed-glow: rgba(239, 68, 68, 0.06);
+  --failed-card-from: rgba(38, 32, 32, 1);
+  --failed-card-to: rgba(28, 24, 24, 1);
+  --failed-icon-light: rgba(239, 68, 68, 0.5);
+  --failed-icon-dark: rgba(239, 68, 68, 0.6);
+
+  /* Toast */
+  --toast-bg: #1a1a1a;
+  --toast-fg: #ffffff;
+  --toast-border: rgba(255, 255, 255, 0.08);
+
+  /* SVG / canvas */
+  --svg-grid: rgba(255, 255, 255, 0.04);
+  --svg-line: rgba(255, 255, 255, 0.06);
+  --svg-fill: rgba(255, 255, 255, 0.05);
+  --svg-stroke: rgba(255, 255, 255, 0.1);
+  --annotation-text-stroke: rgba(0, 0, 0, 0.6);
+  --heatmap-empty: rgba(255, 255, 255, 0.04);
+
+  /* Shadows */
+  --menu-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --map-bg: #0c1020;
 }
 
 [data-theme="light"] {
@@ -299,6 +377,59 @@
   --primary-bg: #18181b;
   --primary-bg-hover: #27272a;
   --shadow-overlay: rgba(255, 255, 255, 0.55);
+
+  /* Card surfaces */
+  --card-back-bg: #ebebeb;
+  --card-back-bg-generating: #e0e0e0;
+  --card-front-bg: rgba(255, 255, 255, 0.85);
+  --card-front-bg-generating: rgba(245, 245, 245, 0.9);
+  --card-border-thin: rgba(0, 0, 0, 0.08);
+  --card-border-dashed: rgba(0, 0, 0, 0.1);
+  --file-chip-bg: rgba(0, 0, 0, 0.06);
+
+  /* Edit-mode shine */
+  --edit-glow: rgba(60, 120, 200, 0.18);
+  --edit-shine-from: rgba(0, 0, 0, 0.06);
+  --edit-shine-to: rgba(0, 0, 0, 0.01);
+  --edit-shine-line: rgba(0, 0, 0, 0.25);
+
+  /* Loader */
+  --loader-bg: #fafafa;
+  --loader-track: rgba(0, 0, 0, 0.05);
+  --loader-track-border: rgba(0, 0, 0, 0.1);
+  --loader-line: rgba(0, 0, 0, 0.85);
+  --loader-line-glow: rgba(0, 0, 0, 0.4);
+  --loader-progress-active: rgba(0, 0, 0, 0.55);
+  --loader-progress-inactive: rgba(0, 0, 0, 0.1);
+  --loader-bar-bg: rgba(0, 0, 0, 0.1);
+  --loader-bar-fill: rgba(0, 0, 0, 0.65);
+  --loader-fill-grad: rgba(0, 0, 0, 0.05);
+
+  /* Failed card */
+  --failed-bg-from: rgba(220, 38, 38, 0.06);
+  --failed-bg-to: rgba(127, 29, 29, 0.03);
+  --failed-glow: rgba(239, 68, 68, 0.08);
+  --failed-card-from: rgba(254, 242, 242, 1);
+  --failed-card-to: rgba(252, 232, 232, 1);
+  --failed-icon-light: rgba(220, 38, 38, 0.55);
+  --failed-icon-dark: rgba(220, 38, 38, 0.7);
+
+  /* Toast */
+  --toast-bg: #ffffff;
+  --toast-fg: #18181b;
+  --toast-border: rgba(0, 0, 0, 0.1);
+
+  /* SVG / canvas */
+  --svg-grid: rgba(0, 0, 0, 0.05);
+  --svg-line: rgba(0, 0, 0, 0.08);
+  --svg-fill: rgba(0, 0, 0, 0.05);
+  --svg-stroke: rgba(0, 0, 0, 0.12);
+  --annotation-text-stroke: rgba(255, 255, 255, 0.85);
+  --heatmap-empty: rgba(0, 0, 0, 0.05);
+
+  /* Shadows */
+  --menu-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --map-bg: #f1f5f9;
 }
 
 /* ============================================
@@ -320,6 +451,9 @@
 [data-theme="light"] .bg-\[\#1a1a1a\] { background-color: var(--surface-2); }
 [data-theme="light"] .bg-\[\#1a1a1a\]\/95 { background-color: rgb(255 255 255 / 0.95); }
 [data-theme="light"] .bg-\[\#0c1020\] { background-color: #f1f5f9; }
+[data-theme="light"] .bg-\[\#0A0A0A\],
+[data-theme="light"] .bg-\[\#0a0a0a\] { background-color: var(--app-bg); }
+[data-theme="light"] .bg-\[\#111111\] { background-color: var(--card-back-bg-generating); }
 
 /* White-opacity overlays → black-opacity in light */
 [data-theme="light"] .bg-white\/\[0\.02\] { background-color: rgb(0 0 0 / 0.02); }
@@ -342,6 +476,7 @@
 [data-theme="light"] .border-white\/\[0\.08\] { border-color: rgb(0 0 0 / 0.1); }
 [data-theme="light"] .border-white\/\[0\.1\] { border-color: rgb(0 0 0 / 0.12); }
 [data-theme="light"] .border-white\/\[0\.15\] { border-color: rgb(0 0 0 / 0.18); }
+[data-theme="light"] .border-white\/\[0\.2\] { border-color: rgb(0 0 0 / 0.22); }
 [data-theme="light"] .border-white\/20 { border-color: rgb(0 0 0 / 0.22); }
 [data-theme="light"] .focus\:border-white\/20:focus { border-color: rgb(0 0 0 / 0.3); }
 [data-theme="light"] .hover\:border-white\/\[0\.14\]:hover { border-color: rgb(0 0 0 / 0.16); }
@@ -395,6 +530,24 @@
 [data-theme="light"] .bg-\[\#1e1e1e\] { background-color: #ebebeb; }
 [data-theme="light"] .bg-\[rgba\(26\,26\,26\,0\.8\)\] { background-color: rgba(255, 255, 255, 0.85); }
 
+/* Arbitrary-value gradients used for fades on detail dialog & sidebar */
+[data-theme="light"] .from-\[\#161616\] {
+  --tw-gradient-from: var(--surface-1) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(255 255 255 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+[data-theme="light"] .to-\[\#161616\] {
+  --tw-gradient-to: var(--surface-1) var(--tw-gradient-to-position);
+}
+[data-theme="light"] .from-\[\#2a2a2a\] {
+  --tw-gradient-from: #e4e4e7 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(228 228 231 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+[data-theme="light"] .to-\[\#1a1a1a\] {
+  --tw-gradient-to: var(--surface-2) var(--tw-gradient-to-position);
+}
+
 /* Reduced-motion */
 [data-reduce-motion="true"] *,
 [data-reduce-motion="true"] *::before,
@@ -404,6 +557,92 @@
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/* ============================================
+   DENSITY TOKENS — drive spacing/sizing across the app.
+   Components opt-in via --d-* CSS variables in arbitrary
+   Tailwind values like gap-[var(--d-grid-gap)]. The broad
+   overrides below cover the existing gap-4/sm:gap-6 grid and
+   the main content padding so the toggle moves real pixels.
+   ============================================ */
+:root,
+[data-density="cozy"] {
+  --d-grid-gap: 1.5rem;
+  --d-grid-gap-sm: 1rem;
+  --d-section-gap: 1.5rem;
+  --d-card-pad-x: 1rem;
+  --d-card-pad-y: 1rem;
+  --d-toolbar-py: 0.5rem;
+  --d-row-gap: 0.5rem;
+}
+[data-density="compact"] {
+  --d-grid-gap: 1rem;
+  --d-grid-gap-sm: 0.625rem;
+  --d-section-gap: 1rem;
+  --d-card-pad-x: 0.75rem;
+  --d-card-pad-y: 0.625rem;
+  --d-toolbar-py: 0.375rem;
+  --d-row-gap: 0.25rem;
+}
+[data-density="spacious"] {
+  --d-grid-gap: 2.25rem;
+  --d-grid-gap-sm: 1.25rem;
+  --d-section-gap: 2rem;
+  --d-card-pad-x: 1.25rem;
+  --d-card-pad-y: 1.25rem;
+  --d-toolbar-py: 0.75rem;
+  --d-row-gap: 0.75rem;
+}
+
+/* Scale base typography with density. Everything in `rem` shifts. */
+html[data-density="compact"] { font-size: 15px; }
+html[data-density="cozy"] { font-size: 16px; }
+html[data-density="spacious"] { font-size: 17px; }
+
+/* Override the home folder grid gap. */
+html[data-density="compact"] .grid.gap-4 { gap: 0.625rem; }
+@media (min-width: 640px) {
+  html[data-density="compact"] .grid.sm\:gap-6 { gap: 1rem; }
+}
+html[data-density="spacious"] .grid.gap-4 { gap: 1.25rem; }
+@media (min-width: 640px) {
+  html[data-density="spacious"] .grid.sm\:gap-6 { gap: 2.25rem; }
+}
+
+/* Tighten/loosen the main content padding. */
+html[data-density="compact"] main.flex-1 { padding: 0.75rem; padding-top: 2rem; }
+@media (min-width: 640px) {
+  html[data-density="compact"] main.flex-1 { padding: 1rem; padding-top: 2.25rem; }
+}
+@media (min-width: 768px) {
+  html[data-density="compact"] main.flex-1 { padding: 1.5rem; padding-top: 2.75rem; }
+}
+html[data-density="spacious"] main.flex-1 { padding: 1.5rem; padding-top: 3.5rem; }
+@media (min-width: 640px) {
+  html[data-density="spacious"] main.flex-1 { padding: 2rem; padding-top: 4rem; }
+}
+@media (min-width: 768px) {
+  html[data-density="spacious"] main.flex-1 { padding: 2.75rem; padding-top: 4.5rem; }
+}
+
+/* ============================================
+   ACCENT — the user's chosen highlight color, applied to
+   ring/outline/dot/active surfaces across the app via
+   `var(--accent-user)` (set in the SettingsProvider).
+   ============================================ */
+:root {
+  --accent-user: #ffffff;
+  --accent-user-soft: rgba(255, 255, 255, 0.18);
+  --accent-user-ring: rgba(255, 255, 255, 0.6);
+}
+.accent-bg { background-color: var(--accent-user); }
+.accent-text { color: var(--accent-user); }
+.accent-border { border-color: var(--accent-user); }
+.accent-drop-ring {
+  box-shadow: 0 0 0 2px var(--accent-user-ring), 0 0 0 4px var(--app-bg, #191919);
+}
+.accent-drop-fill { background-color: var(--accent-user-soft); }
+.accent-toggle-on { background-color: var(--accent-user); }
 
 /* RTL mirror flips for icons that imply direction */
 [dir="rtl"] .rtl-mirror {

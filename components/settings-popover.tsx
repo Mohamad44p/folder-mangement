@@ -145,14 +145,14 @@ export function SettingsPopover({ trigger }: { trigger?: ReactNode }) {
             <button
               onClick={() => setReduceMotion(!reduceMotion)}
               className={`w-9 h-5 rounded-full p-0.5 transition-colors ${
-                reduceMotion ? "bg-sky-500" : "bg-white/[0.1]"
+                reduceMotion ? "accent-toggle-on" : "bg-white/[0.1]"
               }`}
               aria-pressed={reduceMotion}
               aria-label={t("reduceMotion")}
             >
               <span
-                className={`block size-4 bg-white rounded-full transition-transform ${
-                  reduceMotion ? "translate-x-4" : "translate-x-0"
+                className={`block size-4 rounded-full transition-transform ${
+                  reduceMotion ? "translate-x-4 bg-black/80" : "translate-x-0 bg-white"
                 }`}
               />
             </button>

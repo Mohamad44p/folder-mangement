@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, Activity, ChevronLeft, ChevronRight } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -22,6 +24,7 @@ function buildYearGrid(year: number) {
 
 export function ActivityHeatmapModal() {
   const { heatmapModalOpen, setHeatmapModalOpen, getActivityHeatmap } = useFolders()
+  const { t, lang } = useT()
   const [year, setYear] = useState(new Date().getFullYear())
 
   const data = useMemo(() => {
@@ -34,7 +37,7 @@ export function ActivityHeatmapModal() {
   const max = Math.max(1, ...Array.from(data.values()))
 
   const intensity = (count: number) => {
-    if (count === 0) return "rgba(255,255,255,0.04)"
+    if (count === 0) return "var(--heatmap-empty)"
     const t = Math.min(1, count / max)
     if (t < 0.25) return "rgba(56, 189, 248, 0.25)"
     if (t < 0.5) return "rgba(56, 189, 248, 0.5)"
@@ -84,9 +87,12 @@ export function ActivityHeatmapModal() {
                 <Activity className="size-4 text-sky-300" />
               </div>
               <div className="flex-1">
-                <h3 className="text-[15px] font-semibold text-white">Activity heatmap</h3>
+                <h3 className="text-[15px] font-semibold text-white">{t("heatmap.title")}</h3>
                 <p className="text-[12px] text-white/40">
-                  {totalActivity} actions in {year}
+                  {t("heatmap.subtitleN", {
+                    n: localizeNumber(totalActivity, lang),
+                    year: localizeNumber(year, lang),
+                  })}
                 </p>
               </div>
               <div className="flex items-center gap-1 bg-white/[0.04] rounded-full p-0.5">
@@ -96,7 +102,7 @@ export function ActivityHeatmapModal() {
                 >
                   <ChevronLeft className="size-3.5" />
                 </button>
-                <span className="px-2 text-[12px] text-white font-mono">{year}</span>
+                <span className="px-2 text-[12px] text-white font-mono">{localizeNumber(year, lang)}</span>
                 <button
                   onClick={() => setYear(year + 1)}
                   className="size-7 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
@@ -123,7 +129,9 @@ export function ActivityHeatmapModal() {
                           key={di}
                           className="size-3 rounded-sm"
                           style={{ backgroundColor: intensity(count) }}
-                          title={`${d.date}: ${count} action${count === 1 ? "" : "s"}`}
+                          title={count === 1
+                            ? t("heatmap.dayCountOne", { date: d.date })
+                            : t("heatmap.dayCount", { date: d.date, n: localizeNumber(count, lang) })}
                         />
                       )
                     })}
@@ -131,15 +139,15 @@ export function ActivityHeatmapModal() {
                 ))}
               </div>
               <div className="flex items-center gap-2 mt-3 text-[10px] text-white/40">
-                <span>Less</span>
-                {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+                <span>{t("heatmap.legend.less")}</span>
+                {[0, 0.25, 0.5, 0.75, 1].map((step) => (
                   <div
-                    key={t}
+                    key={step}
                     className="size-3 rounded-sm"
-                    style={{ backgroundColor: intensity(t * max) }}
+                    style={{ backgroundColor: intensity(step * max) }}
                   />
                 ))}
-                <span>More</span>
+                <span>{t("heatmap.legend.more")}</span>
               </div>
             </div>
           </motion.div>

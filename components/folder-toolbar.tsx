@@ -2,6 +2,7 @@
 
 import { useFolders, type FilterKind, type SortKey } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
+import { localizeTag } from "@/lib/localize"
 import { Search, SlidersHorizontal, ArrowDownUp, FolderPlus, Command, X, Hash, Star, LayoutTemplate } from "lucide-react"
 import {
   DropdownMenu,
@@ -190,7 +191,7 @@ export function FolderToolbar() {
                     : "bg-white/[0.03] border-white/[0.06] text-white/50 hover:text-white/80 hover:bg-white/[0.06]"
                 }`}
               >
-                {tag}
+                {localizeTag(tag, t)}
               </button>
             )
           })}

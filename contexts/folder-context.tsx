@@ -545,7 +545,7 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     const newFolder: FolderWithMeta = {
       id,
       title: init.title ?? "Untitled Folder",
-      clipCount: init.clipCount ?? 0,
+      fileCount: init.fileCount ?? 0,
       createdAt: init.createdAt ?? now,
       updatedAt: init.updatedAt ?? now,
       images: init.images ?? [],
@@ -575,7 +575,7 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     (parentId: string | null = null) => {
       return createFolder({
         title: "New Folder",
-        clipCount: 0,
+        fileCount: 0,
         images: [],
         files: [],
         parentId,

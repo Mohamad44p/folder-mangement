@@ -1,6 +1,9 @@
 "use client"
 
 import { useFolders, type SearchHit } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import type { TranslationKey } from "@/lib/i18n-dict"
+import { localizeNumber, localizeTitle } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   Search,
@@ -17,14 +20,6 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
-const TOKEN_HELP = [
-  { token: "tag:cinematic", desc: "Match by folder tag" },
-  { token: "type:image", desc: "Filter by file type (image / video / document)" },
-  { token: "size:>1mb", desc: "Files larger than (kb / mb / b)" },
-  { token: "size:<500kb", desc: "Files smaller than" },
-  { token: "fav", desc: "Favorited only" },
-]
-
 interface ParsedQuery {
   text: string
   tags: string[]
@@ -38,12 +33,12 @@ function parseQuery(raw: string): ParsedQuery {
   const out: ParsedQuery = { text: "", tags: [], types: [] }
   const tokens = raw.split(/\s+/).filter(Boolean)
   const remaining: string[] = []
-  for (const t of tokens) {
-    if (t === "fav" || t === "favorite") {
+  for (const tok of tokens) {
+    if (tok === "fav" || tok === "favorite") {
       out.favOnly = true
       continue
     }
-    const m = /^(\w+):(.+)$/.exec(t)
+    const m = /^(\w+):(.+)$/.exec(tok)
     if (m) {
       const key = m[1].toLowerCase()
       const val = m[2]
@@ -68,7 +63,7 @@ function parseQuery(raw: string): ParsedQuery {
         }
       }
     }
-    remaining.push(t)
+    remaining.push(tok)
   }
   out.text = remaining.join(" ").toLowerCase()
   return out
@@ -113,10 +108,19 @@ export function GlobalSearchPalette() {
     addSavedSearch,
     deleteSavedSearch,
   } = useFolders()
+  const { t } = useT()
   const [query, setQuery] = useState("")
   const [activeIdx, setActiveIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+
+  const TOKEN_HELP: { token: TranslationKey; desc: TranslationKey }[] = [
+    { token: "palette.token.tagToken", desc: "palette.token.tagDesc" },
+    { token: "palette.token.type", desc: "palette.token.typeDesc" },
+    { token: "palette.token.size", desc: "palette.token.sizeDesc" },
+    { token: "palette.token.sizeLt", desc: "palette.token.sizeLtDesc" },
+    { token: "palette.token.fav", desc: "palette.token.favDesc" },
+  ]
 
   const parsed = useMemo(() => parseQuery(query), [query])
 
@@ -127,23 +131,27 @@ export function GlobalSearchPalette() {
     const hits: SearchHit[] = []
     for (const f of folders) {
       if (f.deletedAt) continue
-      const path = buildPathTitles(String(f.id))
+      const path = buildPathTitles(String(f.id)).map((title, idx) => {
+        // path[idx] corresponds to navigation entry idx; we don't have ids,
+        // so just localize standalone titles as best-effort.
+        return title
+      })
 
       // Folder-level matching
       const folderMatches =
         (parsed.text &&
           (f.title.toLowerCase().includes(parsed.text) ||
             (f.description ?? "").toLowerCase().includes(parsed.text))) ||
-        parsed.tags.length > 0 &&
-          parsed.tags.every((t) => (f.tags ?? []).map((x) => x.toLowerCase()).includes(t))
+        (parsed.tags.length > 0 &&
+          parsed.tags.every((tg) => (f.tags ?? []).map((x) => x.toLowerCase()).includes(tg)))
 
       if (folderMatches && parsed.types.length === 0 && !parsed.sizeGt && !parsed.sizeLt && !parsed.favOnly) {
         hits.push({
           kind: "folder",
           folderId: String(f.id),
-          folderTitle: f.title,
+          folderTitle: localizeTitle(f, t),
           matchedField: parsed.text ? "title" : "tag",
-          snippet: f.title,
+          snippet: localizeTitle(f, t),
           pathTitles: path,
         })
       }
@@ -152,14 +160,14 @@ export function GlobalSearchPalette() {
         // text match
         if (parsed.text) {
           const inName = file.name.toLowerCase().includes(parsed.text)
-          const inTags = (file.tags ?? []).some((t) => t.toLowerCase().includes(parsed.text))
+          const inTags = (file.tags ?? []).some((tg) => tg.toLowerCase().includes(parsed.text))
           const inDesc = (file.description ?? "").toLowerCase().includes(parsed.text)
           if (!inName && !inTags && !inDesc) continue
         }
         if (parsed.types.length > 0 && !parsed.types.includes(file.type)) continue
         if (parsed.tags.length > 0) {
-          const fileTags = (file.tags ?? []).map((t) => t.toLowerCase())
-          if (!parsed.tags.every((t) => fileTags.includes(t))) continue
+          const fileTags = (file.tags ?? []).map((tg) => tg.toLowerCase())
+          if (!parsed.tags.every((tg) => fileTags.includes(tg))) continue
         }
         if (typeof parsed.sizeGt === "number" && (file.size ?? 0) <= parsed.sizeGt) continue
         if (typeof parsed.sizeLt === "number" && (file.size ?? Infinity) >= parsed.sizeLt) continue
@@ -168,7 +176,7 @@ export function GlobalSearchPalette() {
         hits.push({
           kind: "file",
           folderId: String(f.id),
-          folderTitle: f.title,
+          folderTitle: localizeTitle(f, t),
           fileId: file.id,
           fileName: file.name,
           fileUrl: file.url,
@@ -179,7 +187,7 @@ export function GlobalSearchPalette() {
       }
     }
     return hits.slice(0, 60)
-  }, [folders, parsed, buildPathTitles])
+  }, [folders, parsed, buildPathTitles, t])
 
   // Open via Cmd/Ctrl+K
   useEffect(() => {
@@ -277,20 +285,20 @@ export function GlobalSearchPalette() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search... try tag:cinema  size:>1mb  type:image  fav"
+                placeholder={t("palette.placeholder")}
                 className="flex-1 h-12 bg-transparent border-none text-[14px] text-white placeholder:text-white/30 focus:outline-none"
               />
               {query.trim() && (
                 <button
                   onClick={() => {
                     addSavedSearch(query.slice(0, 40), query)
-                    toast.success("Saved")
+                    toast.success(t("palette.savedToast"))
                   }}
                   className="px-2 h-7 rounded-full text-[11px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/70 hover:text-white flex items-center gap-1"
-                  title="Save this search"
+                  title={t("palette.saveSearchTitle")}
                 >
                   <BookmarkPlus className="size-3" />
-                  Save
+                  {t("palette.saveSearch")}
                 </button>
               )}
               <button
@@ -308,20 +316,20 @@ export function GlobalSearchPalette() {
               parsed.sizeLt ||
               parsed.favOnly) && (
               <div className="px-4 py-2 border-b border-white/[0.06] flex flex-wrap gap-1">
-                {parsed.tags.map((t) => (
+                {parsed.tags.map((tg) => (
                   <span
-                    key={`t-${t}`}
+                    key={`t-${tg}`}
                     className="px-2 py-0.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-[10px] text-sky-200 font-mono"
                   >
-                    tag:{t}
+                    tag:{tg}
                   </span>
                 ))}
-                {parsed.types.map((t) => (
+                {parsed.types.map((tp) => (
                   <span
-                    key={`ty-${t}`}
+                    key={`ty-${tp}`}
                     className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-[10px] text-violet-200 font-mono"
                   >
-                    type:{t}
+                    type:{tp}
                   </span>
                 ))}
                 {parsed.sizeGt && (
@@ -347,7 +355,7 @@ export function GlobalSearchPalette() {
                 <div className="mb-2">
                   <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1.5">
                     <Bookmark className="size-2.5" />
-                    Saved searches
+                    {t("palette.searches")}
                   </div>
                   {savedSearches.map((s) => (
                     <div
@@ -379,18 +387,18 @@ export function GlobalSearchPalette() {
 
               {showHelp && (
                 <div className="px-3 py-3">
-                  <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Search syntax</div>
+                  <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">{t("palette.tipsHeader")}</div>
                   <div className="space-y-1">
                     {TOKEN_HELP.map((h) => (
                       <button
                         key={h.token}
-                        onClick={() => setQuery(h.token)}
+                        onClick={() => setQuery(t(h.token))}
                         className="w-full flex items-center gap-2 px-2 py-1 rounded hover:bg-white/[0.03] text-left"
                       >
                         <code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-[11px] font-mono text-white/80">
-                          {h.token}
+                          {t(h.token)}
                         </code>
-                        <span className="text-[11px] text-white/50">{h.desc}</span>
+                        <span className="text-[11px] text-white/50">{t(h.desc)}</span>
                       </button>
                     ))}
                   </div>
@@ -399,7 +407,7 @@ export function GlobalSearchPalette() {
 
               {query && results.length === 0 && (
                 <div className="px-4 py-8 text-center">
-                  <p className="text-sm text-white/40">No matches.</p>
+                  <p className="text-sm text-white/40">{t("palette.empty")}</p>
                 </div>
               )}
 
@@ -439,7 +447,9 @@ export function GlobalSearchPalette() {
                         ))}
                       </div>
                     </div>
-                    <span className="text-[10px] text-white/30 capitalize shrink-0">{hit.kind}</span>
+                    <span className="text-[10px] text-white/30 shrink-0">
+                      {t(hit.kind === "file" ? "palette.kindFile" : "palette.kindFolder")}
+                    </span>
                   </button>
                 )
               })}
@@ -448,13 +458,15 @@ export function GlobalSearchPalette() {
             {results.length > 0 && (
               <div className="px-4 py-2 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-white/30">
                 <span>
-                  {results.length} result{results.length === 1 ? "" : "s"}
+                  {results.length === 1
+                    ? t("palette.resultsCountOne")
+                    : t("palette.resultsCount", { n: results.length })}
                 </span>
                 <span className="flex items-center gap-2">
                   <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] font-mono">↑↓</kbd>
-                  <span>navigate</span>
+                  <span>{t("palette.navigate")}</span>
                   <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] font-mono">⏎</kbd>
-                  <span>open</span>
+                  <span>{t("palette.open")}</span>
                 </span>
               </div>
             )}

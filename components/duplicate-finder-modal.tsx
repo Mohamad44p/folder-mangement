@@ -1,20 +1,16 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { formatBytesLocalized, localizeNumber, localizeTitle } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, Trash2, AlertTriangle, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
-function formatBytes(n?: number): string {
-  if (!n) return ""
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
-}
-
 export function DuplicateFinderModal() {
-  const { duplicateFinderOpen, setDuplicateFinderOpen, getDuplicates, deleteFile } = useFolders()
+  const { duplicateFinderOpen, setDuplicateFinderOpen, getDuplicates, deleteFile, getFolder } = useFolders()
+  const { t, lang } = useT()
   const [keepIds, setKeepIds] = useState<Record<string, string>>({})
 
   const groups = useMemo(() => (duplicateFinderOpen ? getDuplicates() : []), [duplicateFinderOpen, getDuplicates])
@@ -27,7 +23,11 @@ export function DuplicateFinderModal() {
         removed++
       }
     }
-    toast.success(`Removed ${removed} duplicate${removed === 1 ? "" : "s"}`)
+    toast.success(
+      removed === 1
+        ? t("duplicate.toastDeletedOne")
+        : t("duplicate.toastDeleted", { n: localizeNumber(removed, lang) }),
+    )
     setKeepIds((prev) => {
       const next = { ...prev }
       delete next[groupKey]
@@ -61,14 +61,12 @@ export function DuplicateFinderModal() {
                 <Search className="size-4 text-amber-300" />
               </div>
               <div>
-                <h3 className="text-[15px] font-semibold text-white">Find duplicates</h3>
-                <p className="text-[12px] text-white/40">
-                  Files with the same name and size across all folders.
-                </p>
+                <h3 className="text-[15px] font-semibold text-white">{t("duplicate.title")}</h3>
+                <p className="text-[12px] text-white/40">{t("duplicate.subtitle")}</p>
               </div>
               <button
                 onClick={() => setDuplicateFinderOpen(false)}
-                className="ml-auto size-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
+                className="ms-auto size-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
               >
                 <X className="size-4" />
               </button>
@@ -79,15 +77,17 @@ export function DuplicateFinderModal() {
                   <div className="size-12 rounded-full bg-emerald-500/10 mx-auto flex items-center justify-center mb-2">
                     <span className="text-2xl">✨</span>
                   </div>
-                  <p className="text-sm text-white/70">No duplicates found.</p>
-                  <p className="text-[12px] text-white/40 mt-1">Your library is clean.</p>
+                  <p className="text-sm text-white/70">{t("duplicate.empty")}</p>
+                  <p className="text-[12px] text-white/40 mt-1">{t("duplicate.emptyDesc")}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/15">
                     <AlertTriangle className="size-3.5 text-amber-300" />
                     <p className="text-[12px] text-amber-200/80">
-                      {groups.length} duplicate group{groups.length === 1 ? "" : "s"} found.
+                      {groups.length === 1
+                        ? t("duplicate.foundOne")
+                        : t("duplicate.foundN", { n: localizeNumber(groups.length, lang) })}
                     </p>
                   </div>
                   {groups.map((group) => {
@@ -99,20 +99,25 @@ export function DuplicateFinderModal() {
                       >
                         <div className="px-3 py-2 border-b border-white/[0.04] flex items-center">
                           <span className="text-[12px] text-white/70">
-                            {group.files.length} copies of "{group.files[0].file.name}"
+                            {t("duplicate.copies", {
+                              n: localizeNumber(group.files.length, lang),
+                              name: group.files[0].file.name,
+                            })}
                           </span>
                           <button
                             disabled={!selected}
                             onClick={() => handleResolveGroup(group.key, selected!, group.files)}
-                            className="ml-auto px-2.5 py-1 rounded-full text-[11px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-200 hover:text-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            className="ms-auto px-2.5 py-1 rounded-full text-[11px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-200 hover:text-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                           >
                             <Trash2 className="size-3" />
-                            Delete others
+                            {t("duplicate.deleteOthers")}
                           </button>
                         </div>
                         <div className="divide-y divide-white/[0.04]">
                           {group.files.map((f) => {
                             const isKeep = selected === f.file.id
+                            const folder = getFolder(f.folderId)
+                            const folderTitle = folder ? localizeTitle(folder, t) : f.folderTitle
                             return (
                               <button
                                 key={`${f.folderId}-${f.file.id}`}
@@ -128,7 +133,7 @@ export function DuplicateFinderModal() {
                                 }`}>
                                   {isKeep && <div className="size-1.5 rounded-full bg-emerald-300" />}
                                 </div>
-                                {f.file.url && f.file.url.startsWith("data:image") || /\.(png|jpe?g|gif|webp)$/i.test(f.file.url) ? (
+                                {(f.file.url && f.file.url.startsWith("data:image")) || /\.(png|jpe?g|gif|webp)$/i.test(f.file.url) ? (
                                   <img
                                     src={f.file.url}
                                     alt=""
@@ -140,11 +145,11 @@ export function DuplicateFinderModal() {
                                 <div className="flex-1 min-w-0">
                                   <div className="text-[12px] text-white/85 truncate">{f.file.name}</div>
                                   <div className="text-[10px] text-white/40 truncate">
-                                    {f.folderTitle} · {formatBytes(f.file.size)}
+                                    {folderTitle} · {f.file.size ? formatBytesLocalized(f.file.size, t, lang) : ""}
                                   </div>
                                 </div>
                                 {isKeep && (
-                                  <span className="text-[10px] text-emerald-300 font-medium">Keep</span>
+                                  <span className="text-[10px] text-emerald-300 font-medium">{t("duplicate.keep")}</span>
                                 )}
                               </button>
                             )

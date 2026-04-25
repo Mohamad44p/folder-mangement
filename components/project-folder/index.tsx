@@ -103,7 +103,7 @@ export function ProjectFolder({
         showImages={state.showImages}
         showGeneratingFooter={state.showGeneratingFooter}
         imagePositions={state.imagePositions}
-        clipCount={state.clipCount}
+        fileCount={state.fileCount}
         remainingEta={state.remainingEta}
         formattedDate={state.formattedDate}
         onRemove={onRemove}

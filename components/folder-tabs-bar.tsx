@@ -1,10 +1,13 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeTitle } from "@/lib/localize"
 import { X, Plus } from "lucide-react"
 
 export function FolderTabsBar() {
   const { tabs, activeTab, switchTab, removeTab, openFolder, openFolderId, getFolder } = useFolders()
+  const { t } = useT()
   if (tabs.length <= 1) return null
   return (
     <div className="flex items-center gap-1 px-2 py-1 border-b border-white/[0.06] bg-black/30 overflow-x-auto">
@@ -27,7 +30,7 @@ export function FolderTabsBar() {
               className="flex items-center gap-1.5 max-w-[140px]"
             >
               <span className="text-xs">{folder.icon ?? "📁"}</span>
-              <span className="text-[12px] truncate">{folder.title}</span>
+              <span className="text-[12px] truncate">{localizeTitle(folder, t)}</span>
             </button>
             <button
               onClick={(e) => {
@@ -35,7 +38,7 @@ export function FolderTabsBar() {
                 removeTab(id)
               }}
               className="size-4 flex items-center justify-center rounded text-white/40 hover:text-white hover:bg-white/[0.1]"
-              title="Close tab"
+              title={t("tabs.closeTab")}
             >
               <X className="size-2.5" />
             </button>

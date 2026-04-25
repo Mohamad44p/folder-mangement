@@ -122,7 +122,7 @@ export interface ChecklistItem {
 export interface Project {
   id: string
   title: string
-  clipCount: number
+  fileCount: number
   createdAt: string
   updatedAt?: string
   images: string[]
@@ -283,7 +283,7 @@ function sub(
     id,
     parentId,
     title,
-    clipCount: imgs.length,
+    fileCount: imgs.length,
     createdAt: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toISOString(),
     updatedAt: new Date().toISOString(),
     images: imgs,
@@ -303,7 +303,7 @@ export const projects: Project[] = [
   {
     id: "1",
     title: "Recreation of Historical Events",
-    clipCount: 14,
+    fileCount: 14,
     createdAt: "2024-10-20",
     updatedAt: "2024-12-15",
     parentId: null,
@@ -319,7 +319,7 @@ export const projects: Project[] = [
   {
     id: "2",
     title: "How Creators Make Content Go Viral",
-    clipCount: 6,
+    fileCount: 6,
     createdAt: "2024-11-15",
     updatedAt: "2024-12-20",
     parentId: null,
@@ -333,7 +333,7 @@ export const projects: Project[] = [
   {
     id: "3",
     title: "Trends and Innovations in Gaming for 2026",
-    clipCount: 5,
+    fileCount: 5,
     createdAt: "2024-11-25",
     parentId: null,
     description: "Looking ahead at the gaming landscape.",
@@ -347,7 +347,7 @@ export const projects: Project[] = [
   {
     id: "4",
     title: "Italian Vibes and Trends",
-    clipCount: 8,
+    fileCount: 8,
     createdAt: "2024-10-25",
     parentId: null,
     description: "Mediterranean aesthetics and lifestyle moments.",
@@ -360,7 +360,7 @@ export const projects: Project[] = [
   {
     id: "5",
     title: "Tutorial Series: Unlocking Your Creative Potential",
-    clipCount: 8,
+    fileCount: 8,
     createdAt: "2024-11-20",
     parentId: null,
     description: "Step-by-step guides for creative growth.",

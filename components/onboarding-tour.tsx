@@ -1,40 +1,29 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import type { TranslationKey } from "@/lib/i18n-dict"
 import { AnimatePresence, motion } from "framer-motion"
 import { Sparkles, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { useState } from "react"
 
-const STEPS = [
-  {
-    title: "Welcome to your folder library",
-    body: "Five folders are already set up to demo. The cards keep the rich preview you know — everything else around them is fully wired.",
-    icon: "✨",
-  },
-  {
-    title: "Click any card to open",
-    body: "Folders open with files, subfolders, notes, activity, and metadata. Drag-and-drop works between folders, sidebar, and your desktop.",
-    icon: "📂",
-  },
-  {
-    title: "⌘K searches everything",
-    body: "Try syntax like tag:cinema, type:image, size:>1mb, fav. Save searches; create smart folders that auto-update with the same rules.",
-    icon: "🔍",
-  },
-  {
-    title: "Templates speed you up",
-    body: 'Click "Template" in the toolbar to scaffold pre-filled folder structures: Project, Client, Trip, Brand kit, Photo shoot.',
-    icon: "📋",
-  },
-  {
-    title: "AI helpers, lightbox tools, and more",
-    body: "Every folder has annotations, slideshows, comparisons, sharing, comments, reactions, and export. Explore the action row in any folder dialog.",
-    icon: "🚀",
-  },
+interface Step {
+  titleKey: TranslationKey
+  bodyKey: TranslationKey
+  icon: string
+}
+
+const STEPS: Step[] = [
+  { titleKey: "onboarding.welcomeTitle", bodyKey: "onboarding.welcomeBody", icon: "✨" },
+  { titleKey: "onboarding.openTitle", bodyKey: "onboarding.openBody", icon: "📂" },
+  { titleKey: "onboarding.searchTitle", bodyKey: "onboarding.searchBody", icon: "🔍" },
+  { titleKey: "onboarding.tplTitle", bodyKey: "onboarding.tplBody", icon: "📋" },
+  { titleKey: "onboarding.title5", bodyKey: "onboarding.body5", icon: "🚀" },
 ]
 
 export function OnboardingTour() {
   const { onboardingComplete, setOnboardingComplete } = useFolders()
+  const { t } = useT()
   const [step, setStep] = useState(0)
   const open = !onboardingComplete
 
@@ -81,8 +70,8 @@ export function OnboardingTour() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.05 }}
               >
-                <h3 className="text-[17px] font-semibold text-white mb-2">{STEPS[step].title}</h3>
-                <p className="text-[13px] text-white/60 leading-relaxed">{STEPS[step].body}</p>
+                <h3 className="text-[17px] font-semibold text-white mb-2">{t(STEPS[step].titleKey)}</h3>
+                <p className="text-[13px] text-white/60 leading-relaxed">{t(STEPS[step].bodyKey)}</p>
               </motion.div>
             </div>
             <div className="px-6 pb-6 flex items-center gap-2">
@@ -90,7 +79,7 @@ export function OnboardingTour() {
                 onClick={() => setOnboardingComplete(true)}
                 className="text-[12px] text-white/40 hover:text-white"
               >
-                Skip tour
+                {t("onboarding.skip")}
               </button>
               <div className="flex-1 flex justify-center gap-1.5">
                 {STEPS.map((_, i) => (
@@ -116,7 +105,7 @@ export function OnboardingTour() {
                     onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
                     className="px-3 h-8 rounded-full bg-white text-black text-[12px] font-medium hover:bg-white/90 flex items-center gap-1"
                   >
-                    Next
+                    {t("onboarding.next")}
                     <ChevronRight className="size-3" />
                   </button>
                 ) : (
@@ -125,7 +114,7 @@ export function OnboardingTour() {
                     className="px-3 h-8 rounded-full bg-white text-black text-[12px] font-medium hover:bg-white/90 flex items-center gap-1"
                   >
                     <Sparkles className="size-3" />
-                    Get started
+                    {t("onboarding.start")}
                   </button>
                 )}
               </div>

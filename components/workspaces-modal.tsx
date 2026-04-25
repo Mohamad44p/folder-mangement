@@ -1,12 +1,17 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { FOLDER_ICONS } from "@/lib/data"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
+
+const WORKSPACE_NAME_KEYS: Record<string, "workspace.personal"> = {
+  Personal: "workspace.personal",
+}
 
 export function WorkspacesModal() {
   const {
@@ -17,6 +22,7 @@ export function WorkspacesModal() {
     renameWorkspace,
     deleteWorkspace,
   } = useFolders()
+  const { t } = useT()
   const [name, setName] = useState("")
   const [icon, setIcon] = useState("🏠")
 
@@ -42,41 +48,44 @@ export function WorkspacesModal() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b border-white/[0.06] flex items-center">
-              <h3 className="text-[15px] font-semibold text-white">Workspaces</h3>
+              <h3 className="text-[15px] font-semibold text-white">{t("workspaces.title")}</h3>
               <button
                 onClick={() => setWorkspacesModalOpen(false)}
-                className="ml-auto size-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
+                className="ms-auto size-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
               >
                 <X className="size-4" />
               </button>
             </div>
             <div className="p-3 space-y-1.5">
-              {workspaces.map((w) => (
-                <div
-                  key={w.id}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"
-                >
-                  <span className="size-8 rounded-md bg-white/[0.06] flex items-center justify-center text-base">
-                    {w.icon}
-                  </span>
-                  <input
-                    value={w.name}
-                    onChange={(e) => renameWorkspace(w.id, e.target.value)}
-                    className="flex-1 bg-transparent text-[13px] text-white focus:outline-none"
-                  />
-                  {w.id !== "default" && (
-                    <button
-                      onClick={() => {
-                        deleteWorkspace(w.id)
-                        toast.success("Workspace deleted")
-                      }}
-                      className="size-7 flex items-center justify-center rounded text-white/40 hover:text-red-400 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
+              {workspaces.map((w) => {
+                const localizedName = WORKSPACE_NAME_KEYS[w.name] ? t(WORKSPACE_NAME_KEYS[w.name]) : w.name
+                return (
+                  <div
+                    key={w.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]"
+                  >
+                    <span className="size-8 rounded-md bg-white/[0.06] flex items-center justify-center text-base">
+                      {w.icon}
+                    </span>
+                    <input
+                      value={localizedName}
+                      onChange={(e) => renameWorkspace(w.id, e.target.value)}
+                      className="flex-1 bg-transparent text-[13px] text-white focus:outline-none"
+                    />
+                    {w.id !== "default" && (
+                      <button
+                        onClick={() => {
+                          deleteWorkspace(w.id)
+                          toast.success(t("toast.workspaceDeleted"))
+                        }}
+                        className="size-7 flex items-center justify-center rounded text-white/40 hover:text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
               <div className="flex gap-2 pt-2 border-t border-white/[0.04]">
                 <Select value={icon} onValueChange={setIcon}>
                   <SelectTrigger className="w-[64px]">
@@ -93,12 +102,12 @@ export function WorkspacesModal() {
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Workspace name"
+                  placeholder={t("workspaces.namePlaceholder2")}
                   className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[13px] text-white focus:outline-none focus:border-white/20"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && name.trim()) {
                       addWorkspace(name.trim(), icon)
-                      toast.success("Workspace created")
+                      toast.success(t("toast.workspaceCreated"))
                       setName("")
                     }
                   }}
@@ -107,18 +116,16 @@ export function WorkspacesModal() {
                   onClick={() => {
                     if (!name.trim()) return
                     addWorkspace(name.trim(), icon)
-                    toast.success("Created")
+                    toast.success(t("workspaces.created"))
                     setName("")
                   }}
                   className="px-3 rounded-lg bg-white text-black text-[12px] font-medium hover:bg-white/90 flex items-center gap-1.5"
                 >
                   <Plus className="size-3.5" />
-                  Add
+                  {t("workspaces.add")}
                 </button>
               </div>
-              <p className="text-[11px] text-white/30 px-1 pt-2">
-                Workspaces help separate distinct libraries (work vs. personal). Currently UI-only — switching does not change data scope.
-              </p>
+              <p className="text-[11px] text-white/30 px-1 pt-2">{t("workspaces.helpHint")}</p>
             </div>
           </motion.div>
         </motion.div>

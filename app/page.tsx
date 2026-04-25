@@ -8,6 +8,7 @@ import { FullpageLoader } from "@/components/fullpage-loader"
 import { useGeneration } from "@/contexts/generation-context"
 import { useFolders } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
+import { useSettings } from "@/contexts/settings-context"
 import { useDraggable, useDropTarget } from "@/contexts/dnd-context"
 import { motion } from "framer-motion"
 import { NewProjectSlot } from "@/components/new-project-slot"
@@ -41,7 +42,7 @@ import type { Project } from "@/lib/data"
 const PROJECT_CONFIGS = [
   {
     title: "How to Design a Fashion Brand",
-    clipCount: 6,
+    fileCount: 6,
     images: [
       "/newbrand-portrait-1.png",
       "/newbrand-portrait-2.png",
@@ -52,7 +53,7 @@ const PROJECT_CONFIGS = [
   },
   {
     title: "Starting a Modern Company in New York",
-    clipCount: 8,
+    fileCount: 8,
     images: [
       "/brand-portrait-1.png",
       "/brand-portrait-2.png",
@@ -71,6 +72,7 @@ function CardDndWrapper({
   children: React.ReactNode
 }) {
   const { moveFile, moveFolder, uploadFiles } = useFolders()
+  const { t } = useT()
   const id = String(project.id)
   const drag = useDraggable({ kind: "folder", folderId: id, folderTitle: project.title })
   const drop = useDropTarget({
@@ -97,13 +99,13 @@ function CardDndWrapper({
   return (
     <div
       {...drop.dropProps}
-      className={`relative rounded-2xl ${drop.isOver ? "ring-2 ring-sky-400/60 ring-offset-2 ring-offset-[#191919]" : ""}`}
+      className={`relative rounded-2xl ${drop.isOver ? "accent-drop-ring" : ""}`}
     >
       <div {...drag.dragProps}>{children}</div>
       {drop.isOver && (
-        <div className="absolute inset-0 rounded-2xl bg-sky-400/10 pointer-events-none flex items-center justify-center z-10">
-          <div className="px-3 py-1.5 rounded-full bg-sky-500 text-white text-[12px] font-medium">
-            Drop to add
+        <div className="absolute inset-0 rounded-2xl accent-drop-fill pointer-events-none flex items-center justify-center z-10">
+          <div className="px-3 py-1.5 rounded-full accent-bg text-black text-[12px] font-medium">
+            {t("dnd.dropToAdd")}
           </div>
         </div>
       )}
@@ -111,7 +113,7 @@ function CardDndWrapper({
   )
 }
 
-export default function ClipsPage() {
+export default function FoldersPage() {
   const { startGeneration } = useGeneration()
   const {
     createFolder,
@@ -125,6 +127,7 @@ export default function ClipsPage() {
     filterKind,
   } = useFolders()
   const { t } = useT()
+  const { theme } = useSettings()
 
   const [isLoading, setIsLoading] = useState(true)
   const [showContent, setShowContent] = useState(false)
@@ -140,7 +143,7 @@ export default function ClipsPage() {
 
     const id = createFolder({
       title: config.title,
-      clipCount: config.clipCount,
+      fileCount: config.fileCount,
       images: config.images,
       isGenerating: true,
       progress: 0,
@@ -200,11 +203,12 @@ export default function ClipsPage() {
     <div className="min-h-screen bg-[#191919] flex">
       <Toaster
         position="bottom-center"
+        theme={theme}
         toastOptions={{
           style: {
-            background: "#1A1A1A",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            color: "#fff",
+            background: theme === "light" ? "#ffffff" : "#1A1A1A",
+            border: theme === "light" ? "1px solid rgba(0, 0, 0, 0.1)" : "1px solid rgba(255, 255, 255, 0.08)",
+            color: theme === "light" ? "#18181b" : "#fff",
             borderRadius: "12px",
           },
         }}

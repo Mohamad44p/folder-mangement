@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeTitle } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, Star, ArrowLeftRight, RefreshCcw } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
@@ -10,6 +12,7 @@ type Layout = "side" | "slider"
 
 export function CompareMode() {
   const { compare, closeCompare, getFolder, toggleFileFavorite } = useFolders()
+  const { t } = useT()
   const [layout, setLayout] = useState<Layout>("side")
   const [splitPos, setSplitPos] = useState(50) // for slider mode
 
@@ -45,9 +48,13 @@ export function CompareMode() {
           {/* Top bar */}
           <div className="absolute top-0 inset-x-0 z-10 px-5 py-4 flex items-center gap-3 bg-gradient-to-b from-black/70 to-transparent">
             <div className="flex-1 min-w-0">
-              <div className="text-[14px] text-white truncate">Compare</div>
+              <div className="text-[14px] text-white truncate">{t("compare.title")}</div>
               <div className="text-[11px] text-white/50 truncate">
-                {folder?.title} · {a.name} vs {b.name}
+                {t("compare.subtitle", {
+                  folder: folder ? localizeTitle(folder, t) : "",
+                  a: a.name,
+                  b: b.name,
+                })}
               </div>
             </div>
             <div className="flex items-center gap-1 bg-black/50 rounded-full p-1 border border-white/[0.06]">
@@ -58,7 +65,7 @@ export function CompareMode() {
                 }`}
               >
                 <ArrowLeftRight className="size-3" />
-                Side by side
+                {t("compare.sideBySide")}
               </button>
               <button
                 onClick={() => setLayout("slider")}
@@ -67,7 +74,7 @@ export function CompareMode() {
                 }`}
               >
                 <RefreshCcw className="size-3" />
-                Slider
+                {t("compare.slider")}
               </button>
             </div>
             <button
@@ -98,7 +105,7 @@ export function CompareMode() {
                     <button
                       onClick={() => {
                         if (compare) toggleFileFavorite(compare.folderId, file.id)
-                        toast.success(`Toggled favorite on ${file.name}`)
+                        toast.success(t("compare.toggledFav", { name: file.name }))
                       }}
                       className={`absolute top-3 right-3 size-8 flex items-center justify-center rounded-full backdrop-blur-md border border-white/[0.06] transition-colors ${
                         file.favorite

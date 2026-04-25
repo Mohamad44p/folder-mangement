@@ -1,11 +1,14 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber } from "@/lib/localize"
 import { CheckSquare, Square, Plus, Trash2, ListChecks } from "lucide-react"
 import { useState } from "react"
 
 export function FolderChecklist({ folderId }: { folderId: string }) {
   const { getFolder, addChecklistItem, toggleChecklistItem, removeChecklistItem } = useFolders()
+  const { t, lang } = useT()
   const folder = getFolder(folderId)
   const items = folder?.checklist ?? []
   const [draft, setDraft] = useState("")
@@ -16,10 +19,13 @@ export function FolderChecklist({ folderId }: { folderId: string }) {
     <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-3 space-y-2">
       <div className="flex items-center gap-2">
         <ListChecks className="size-3 text-white/50" />
-        <span className="text-[10px] uppercase tracking-wider text-white/40">Checklist</span>
+        <span className="text-[10px] uppercase tracking-wider text-white/40">{t("checklist.title")}</span>
         {items.length > 0 && (
-          <span className="text-[10px] text-white/50 font-mono ml-auto">
-            {completed}/{items.length}
+          <span className="text-[10px] text-white/50 font-mono ms-auto">
+            {t("checklist.progress", {
+              done: localizeNumber(completed, lang),
+              total: localizeNumber(items.length, lang),
+            })}
           </span>
         )}
       </div>
@@ -64,7 +70,7 @@ export function FolderChecklist({ folderId }: { folderId: string }) {
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add an item..."
+          placeholder={t("checklist.addPlaceholder")}
           className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20"
           onKeyDown={(e) => {
             if (e.key === "Enter" && draft.trim()) {

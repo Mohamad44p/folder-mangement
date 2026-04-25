@@ -1,6 +1,7 @@
 "use client"
 
 import type { FileAnnotation } from "@/lib/data"
+import { useT } from "@/contexts/i18n-context"
 import { Square as SquareIcon, ArrowRight, Type, Circle as CircleIcon, Trash2, Save, Eye, EyeOff } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
@@ -23,6 +24,7 @@ export function AnnotationsCanvas({
   width: number
   height: number
 }) {
+  const { t } = useT()
   const [tool, setTool] = useState<Tool>(null)
   const [color, setColor] = useState(COLORS[0])
   const [drawing, setDrawing] = useState<FileAnnotation | null>(null)
@@ -163,7 +165,7 @@ export function AnnotationsCanvas({
           fill={a.color}
           fontSize="14"
           fontWeight="600"
-          style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.6)", strokeWidth: 2 }}
+          style={{ paintOrder: "stroke", stroke: "var(--annotation-text-stroke)", strokeWidth: 2 }}
         >
           {a.text}
         </text>
@@ -174,8 +176,8 @@ export function AnnotationsCanvas({
 
   return (
     <>
-      {/* Toolbar */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-black/70 backdrop-blur-md border border-white/[0.08] rounded-full px-2 py-1.5">
+      {/* Toolbar — sits above the image so it never overlaps content */}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-30 flex items-center gap-1 bg-black/70 backdrop-blur-md border border-white/[0.08] rounded-full px-2 py-1.5 whitespace-nowrap">
         <button
           onClick={() => onToggleVisible(!visible)}
           className="size-7 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.1]"
@@ -246,7 +248,7 @@ export function AnnotationsCanvas({
                 autoFocus
                 value={textDraft}
                 onChange={(e) => setTextDraft(e.target.value)}
-                placeholder="Annotation text"
+                placeholder={t("annotations.textPlaceholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     if (textDraft.trim()) {

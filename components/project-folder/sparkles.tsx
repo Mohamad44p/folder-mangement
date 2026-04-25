@@ -52,7 +52,7 @@ export function Sparkles({ count = 16, fading = false, variant = "generating" }:
       {variant === "generating" && (
         <div
           className="absolute inset-0 animate-pulse"
-          style={{ background: "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04), transparent 70%)" }}
+          style={{ background: "radial-gradient(circle at 50% 50%, var(--svg-grid), transparent 70%)" }}
         />
       )}
       {[...Array(count)].map((_, idx) => {

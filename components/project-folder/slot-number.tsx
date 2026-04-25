@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber } from "@/lib/localize"
 
 interface SlotNumberProps {
   value: number
@@ -8,6 +10,7 @@ interface SlotNumberProps {
 }
 
 export function SlotNumber({ value, isSpinning }: SlotNumberProps) {
+  const { lang } = useT()
   const [displayValue, setDisplayValue] = useState(value)
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -44,7 +47,7 @@ export function SlotNumber({ value, isSpinning }: SlotNumberProps) {
         transform: isAnimating ? "translateY(-1px)" : "translateY(0)",
       }}
     >
-      {displayValue}
+      {localizeNumber(displayValue, lang)}
     </span>
   )
 }

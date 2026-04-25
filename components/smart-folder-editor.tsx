@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import type { TranslationKey } from "@/lib/i18n-dict"
 import { FOLDER_ICONS, type SmartFolder, type SmartFolderField, type SmartFolderOp, type SmartFolderRule } from "@/lib/data"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, Plus, Trash2, Sparkles } from "lucide-react"
@@ -8,29 +10,30 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const FIELD_OPTIONS: { value: SmartFolderField; label: string; ops: SmartFolderOp[] }[] = [
-  { value: "tag", label: "Tag", ops: ["has", "contains"] },
-  { value: "type", label: "Type", ops: ["is"] },
-  { value: "favorite", label: "Favorite", ops: ["is"] },
-  { value: "name", label: "Name", ops: ["contains"] },
-  { value: "size", label: "Size (bytes)", ops: ["gt", "lt"] },
-  { value: "uploaded", label: "Uploaded", ops: ["within-days"] },
+const FIELD_OPTIONS: { value: SmartFolderField; key: TranslationKey; ops: SmartFolderOp[] }[] = [
+  { value: "tag", key: "smartEditor.field.tag", ops: ["has", "contains"] },
+  { value: "type", key: "smartEditor.field.type", ops: ["is"] },
+  { value: "favorite", key: "smartEditor.field.favorite", ops: ["is"] },
+  { value: "name", key: "smartEditor.field.name", ops: ["contains"] },
+  { value: "size", key: "smartEditor.field.size", ops: ["gt", "lt"] },
+  { value: "uploaded", key: "smartEditor.field.uploaded", ops: ["within-days"] },
 ]
 
-const TYPE_VALUES = ["image", "video", "document", "other"]
+const TYPE_VALUES = ["image", "video", "document", "other"] as const
 
-const OP_LABELS: Record<SmartFolderOp, string> = {
-  is: "is",
-  has: "is",
-  contains: "contains",
-  gt: ">",
-  lt: "<",
-  "within-days": "within last (days)",
+const OP_KEYS: Record<SmartFolderOp, TranslationKey> = {
+  is: "smartEditor.op.is",
+  has: "smartEditor.op.is",
+  contains: "smartEditor.op.contains",
+  gt: "smartEditor.op.gt",
+  lt: "smartEditor.op.lt",
+  "within-days": "smartEditor.op.withinDays",
 }
 
 export function SmartFolderEditor() {
   const { smartFolderEditor, setSmartFolderEditor, smartFolders, addSmartFolder, updateSmartFolder } =
     useFolders()
+  const { t } = useT()
 
   const [name, setName] = useState("")
   const [icon, setIcon] = useState("✨")
@@ -44,7 +47,7 @@ export function SmartFolderEditor() {
 
   useEffect(() => {
     if (smartFolderEditor?.mode === "new") {
-      setName("New smart folder")
+      setName(t("smart.new"))
       setIcon("✨")
       setMatchAll(true)
       setRules([{ field: "tag", op: "has", value: "" }])
@@ -54,7 +57,7 @@ export function SmartFolderEditor() {
       setMatchAll(editing.matchAll)
       setRules(editing.rules)
     }
-  }, [smartFolderEditor, editing])
+  }, [smartFolderEditor, editing, t])
 
   const handleSave = () => {
     const cleanRules = rules.filter((r) => {
@@ -62,16 +65,16 @@ export function SmartFolderEditor() {
       return r.value !== "" && r.value !== undefined
     })
     if (cleanRules.length === 0) {
-      toast.error("Add at least one rule")
+      toast.error(t("smartEditor.errAddRule"))
       return
     }
     const payload: Omit<SmartFolder, "id"> = { name, icon, matchAll, rules: cleanRules }
     if (smartFolderEditor?.mode === "new") {
       addSmartFolder(payload)
-      toast.success("Smart folder created")
+      toast.success(t("toast.smartFolderCreated"))
     } else if (smartFolderEditor?.mode === "edit") {
       updateSmartFolder(smartFolderEditor.id, payload)
-      toast.success("Smart folder updated")
+      toast.success(t("toast.smartFolderUpdated"))
     }
     setSmartFolderEditor(null)
   }
@@ -103,9 +106,9 @@ export function SmartFolderEditor() {
               </div>
               <div className="flex-1">
                 <h3 className="text-[15px] font-semibold text-white">
-                  {smartFolderEditor?.mode === "new" ? "New smart folder" : "Edit smart folder"}
+                  {smartFolderEditor?.mode === "new" ? t("smartEditor.titleNew") : t("smartEditor.titleEdit")}
                 </h3>
-                <p className="text-[12px] text-white/40">Files matching these rules show up automatically.</p>
+                <p className="text-[12px] text-white/40">{t("smartEditor.subtitle")}</p>
               </div>
               <button
                 onClick={() => setSmartFolderEditor(null)}
@@ -117,7 +120,7 @@ export function SmartFolderEditor() {
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">Name</div>
+                <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">{t("smartEditor.nameLabel")}</div>
                 <div className="flex gap-2">
                   <Select value={icon} onValueChange={setIcon}>
                     <SelectTrigger className="w-[64px]">
@@ -140,7 +143,7 @@ export function SmartFolderEditor() {
               </div>
 
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">Match</div>
+                <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">{t("smartEditor.matchLabel")}</div>
                 <div className="flex gap-1 p-1 rounded-full bg-white/[0.04] border border-white/[0.06] w-fit">
                   <button
                     onClick={() => setMatchAll(true)}
@@ -148,7 +151,7 @@ export function SmartFolderEditor() {
                       matchAll ? "bg-white/[0.1] text-white" : "text-white/50 hover:text-white"
                     }`}
                   >
-                    All rules
+                    {t("smartEditor.matchAllShort")}
                   </button>
                   <button
                     onClick={() => setMatchAll(false)}
@@ -156,13 +159,13 @@ export function SmartFolderEditor() {
                       !matchAll ? "bg-white/[0.1] text-white" : "text-white/50 hover:text-white"
                     }`}
                   >
-                    Any rule
+                    {t("smartEditor.matchAnyShort")}
                   </button>
                 </div>
               </div>
 
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">Rules</div>
+                <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">{t("smartEditor.rules")}</div>
                 <div className="space-y-2">
                   {rules.map((rule, idx) => {
                     const fieldDef = FIELD_OPTIONS.find((f) => f.value === rule.field)
@@ -188,7 +191,7 @@ export function SmartFolderEditor() {
                           <SelectContent>
                             {FIELD_OPTIONS.map((f) => (
                               <SelectItem key={f.value} value={f.value}>
-                                {f.label}
+                                {t(f.key)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -207,7 +210,7 @@ export function SmartFolderEditor() {
                           <SelectContent>
                             {fieldDef?.ops.map((o) => (
                               <SelectItem key={o} value={o}>
-                                {OP_LABELS[o]}
+                                {t(OP_KEYS[o])}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -225,8 +228,8 @@ export function SmartFolderEditor() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="true">Yes</SelectItem>
-                              <SelectItem value="false">No</SelectItem>
+                              <SelectItem value="true">{t("smartEditor.yes")}</SelectItem>
+                              <SelectItem value="false">{t("smartEditor.no")}</SelectItem>
                             </SelectContent>
                           </Select>
                         ) : rule.field === "type" ? (
@@ -242,10 +245,10 @@ export function SmartFolderEditor() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__pick">— pick type —</SelectItem>
+                              <SelectItem value="__pick">{t("smartEditor.pickType")}</SelectItem>
                               {TYPE_VALUES.map((v) => (
                                 <SelectItem key={v} value={v}>
-                                  {v}
+                                  {t(`fileFilter.${v}` as TranslationKey)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -263,6 +266,7 @@ export function SmartFolderEditor() {
                               setRules(next)
                             }}
                             type={rule.field === "size" || rule.field === "uploaded" ? "number" : "text"}
+                            placeholder={t("smartEditor.valuePlaceholder")}
                             className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[12px] text-white focus:outline-none focus:border-white/20"
                           />
                         )}
@@ -281,7 +285,7 @@ export function SmartFolderEditor() {
                   className="mt-2 px-3 py-1.5 rounded-full text-[12px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/70 hover:text-white flex items-center gap-1.5"
                 >
                   <Plus className="size-3" />
-                  Add rule
+                  {t("smartEditor.addRule")}
                 </button>
               </div>
             </div>
@@ -291,13 +295,13 @@ export function SmartFolderEditor() {
                 onClick={() => setSmartFolderEditor(null)}
                 className="px-3 py-1.5 rounded-full text-[13px] text-white/70 hover:text-white hover:bg-white/[0.06]"
               >
-                Cancel
+                {t("action.cancel")}
               </button>
               <button
                 onClick={handleSave}
                 className="px-3 py-1.5 rounded-full text-[13px] font-medium text-black bg-white hover:bg-white/90"
               >
-                {smartFolderEditor?.mode === "new" ? "Create" : "Save"}
+                {smartFolderEditor?.mode === "new" ? t("action.create") : t("action.save")}
               </button>
             </div>
           </motion.div>

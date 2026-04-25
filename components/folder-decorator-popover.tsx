@@ -2,6 +2,7 @@
 
 import * as Popover from "@radix-ui/react-popover"
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
 import { FOLDER_COLORS, FOLDER_ICONS } from "@/lib/data"
 import { Check } from "lucide-react"
 import type { ReactNode } from "react"
@@ -20,6 +21,7 @@ export function FolderDecoratorPopover({
   side = "bottom",
 }: FolderDecoratorPopoverProps) {
   const { getFolder, setFolderColor, setFolderIcon } = useFolders()
+  const { t } = useT()
   const folder = getFolder(folderId)
 
   return (
@@ -34,7 +36,7 @@ export function FolderDecoratorPopover({
         >
           <div className="space-y-3">
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Icon</div>
+              <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">{t("decorator.icon")}</div>
               <div className="grid grid-cols-8 gap-1">
                 {FOLDER_ICONS.map((emoji) => (
                   <button
@@ -50,14 +52,14 @@ export function FolderDecoratorPopover({
                 <button
                   onClick={() => setFolderIcon(folderId, undefined)}
                   className="size-7 flex items-center justify-center rounded-md hover:bg-white/[0.06] text-white/40 text-[10px]"
-                  title="Clear icon"
+                  title={t("decorator.clear")}
                 >
                   ✕
                 </button>
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Color</div>
+              <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">{t("decorator.color")}</div>
               <div className="grid grid-cols-8 gap-1.5">
                 {FOLDER_COLORS.map((c) => {
                   const active = folder?.color === c.value
@@ -78,7 +80,7 @@ export function FolderDecoratorPopover({
                 <button
                   onClick={() => setFolderColor(folderId, undefined)}
                   className="size-7 rounded-full border border-dashed border-white/[0.2] text-white/40 text-[10px] hover:bg-white/[0.04] flex items-center justify-center"
-                  title="Clear color"
+                  title={t("decorator.clear")}
                 >
                   ✕
                 </button>

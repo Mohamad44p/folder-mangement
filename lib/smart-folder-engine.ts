@@ -1,4 +1,7 @@
 import type { FolderFile, Project, SmartFolder, SmartFolderRule } from "./data"
+import type { TranslationKey } from "./i18n-dict"
+
+type Tfn = (key: TranslationKey, vars?: Record<string, string | number>) => string
 
 export interface SmartFolderResult {
   files: { file: FolderFile; folderId: string; folderTitle: string }[]
@@ -58,26 +61,56 @@ export function evaluateSmartFolder(smart: SmartFolder, folders: Project[]): Sma
   return { files, folders: [] }
 }
 
-export function describeSmartFolder(smart: SmartFolder): string {
-  if (smart.rules.length === 0) return "No rules"
-  const parts = smart.rules.map((r) => describeRule(r))
-  return parts.join(smart.matchAll ? " AND " : " OR ")
+export function describeSmartFolder(smart: SmartFolder, t?: Tfn): string {
+  if (smart.rules.length === 0) return t ? t("smartRule.noRules") : "No rules"
+  const parts = smart.rules.map((r) => describeRule(r, t))
+  const sep = t
+    ? smart.matchAll
+      ? ` ${t("smartRule.and")} `
+      : ` ${t("smartRule.or")} `
+    : smart.matchAll
+      ? " AND "
+      : " OR "
+  return parts.join(sep)
 }
 
-export function describeRule(rule: SmartFolderRule): string {
+export function describeRule(rule: SmartFolderRule, t?: Tfn): string {
+  if (!t) {
+    // Plain English fallback for any caller that didn't pass t.
+    switch (rule.field) {
+      case "tag":
+        return rule.op === "has" ? `tag = ${rule.value}` : `tag contains "${rule.value}"`
+      case "type":
+        return `type = ${rule.value}`
+      case "favorite":
+        return rule.value ? "favorited" : "not favorited"
+      case "name":
+        return `name contains "${rule.value}"`
+      case "size":
+        return rule.op === "gt" ? `size > ${rule.value} B` : `size < ${rule.value} B`
+      case "uploaded":
+        return `uploaded in last ${rule.value} days`
+      default:
+        return ""
+    }
+  }
   switch (rule.field) {
     case "tag":
-      return rule.op === "has" ? `tag = ${rule.value}` : `tag contains "${rule.value}"`
+      return rule.op === "has"
+        ? t("smartRule.tagEq", { value: String(rule.value) })
+        : t("smartRule.tagContains", { value: String(rule.value) })
     case "type":
-      return `type = ${rule.value}`
+      return t("smartRule.typeEq", { value: String(rule.value) })
     case "favorite":
-      return rule.value ? "favorited" : "not favorited"
+      return rule.value ? t("smartRule.favorited") : t("smartRule.notFavorited")
     case "name":
-      return `name contains "${rule.value}"`
+      return t("smartRule.nameContains", { value: String(rule.value) })
     case "size":
-      return rule.op === "gt" ? `size > ${rule.value} B` : `size < ${rule.value} B`
+      return rule.op === "gt"
+        ? t("smartRule.sizeGt", { value: String(rule.value) })
+        : t("smartRule.sizeLt", { value: String(rule.value) })
     case "uploaded":
-      return `uploaded in last ${rule.value} days`
+      return t("smartRule.uploadedDays", { value: String(rule.value) })
     default:
       return ""
   }

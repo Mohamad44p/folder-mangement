@@ -1,23 +1,26 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { formatDateLocalized, localizeNumber, localizeTitle } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import { Trash2, X, RotateCcw, AlertTriangle } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
-  } catch {
-    return iso
-  }
-}
-
 export function TrashView() {
   const { trashOpen, setTrashOpen, getTrashed, restoreFolder, permanentlyDeleteFolder, emptyTrash } = useFolders()
+  const { t, lang } = useT()
   const trashed = getTrashed()
   const [confirmEmpty, setConfirmEmpty] = useState(false)
+
+  const formatDate = (iso: string) => {
+    try {
+      return formatDateLocalized(new Date(iso), t, lang)
+    } catch {
+      return iso
+    }
+  }
 
   const handleClose = () => {
     setTrashOpen(false)
@@ -51,9 +54,11 @@ export function TrashView() {
                 <Trash2 className="size-4 text-white/60" />
               </div>
               <div className="flex-1">
-                <h3 className="text-[15px] font-semibold text-white">Trash</h3>
+                <h3 className="text-[15px] font-semibold text-white">{t("trash.title")}</h3>
                 <p className="text-[12px] text-white/40">
-                  {trashed.length} folder{trashed.length === 1 ? "" : "s"} in trash. Restore anytime.
+                  {trashed.length === 1
+                    ? t("trash.subtitleOne")
+                    : t("trash.subtitle", { count: localizeNumber(trashed.length, lang) })}
                 </p>
               </div>
               {trashed.length > 0 && (
@@ -62,7 +67,7 @@ export function TrashView() {
                   className="h-8 px-3 rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-[12px] text-red-300 hover:text-red-200 transition-colors flex items-center gap-1.5"
                 >
                   <AlertTriangle className="size-3.5" />
-                  Empty trash
+                  {t("trash.emptyButton")}
                 </button>
               )}
               <button
@@ -79,54 +84,60 @@ export function TrashView() {
                   <div className="size-12 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-3">
                     <Trash2 className="size-5 text-white/30" />
                   </div>
-                  <p className="text-sm text-white/50">Trash is empty.</p>
-                  <p className="text-[12px] text-white/30 mt-1">
-                    Deleted folders show up here.
-                  </p>
+                  <p className="text-sm text-white/50">{t("trash.empty")}</p>
+                  <p className="text-[12px] text-white/30 mt-1">{t("trash.emptyDesc")}</p>
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {trashed.map((f) => (
-                    <div
-                      key={f.id}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
-                    >
+                  {trashed.map((f) => {
+                    const fileCount = f.files?.length ?? 0
+                    return (
                       <div
-                        className="size-9 rounded-md flex items-center justify-center text-base shrink-0"
-                        style={{
-                          backgroundColor: f.color ?? "rgba(255,255,255,0.06)",
-                        }}
+                        key={f.id}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
                       >
-                        {f.icon ?? "📁"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13px] text-white truncate">{f.title}</div>
-                        <div className="text-[11px] text-white/40 truncate">
-                          Deleted {formatDate(f.deletedAt ?? "")} · {f.files?.length ?? 0} file{(f.files?.length ?? 0) === 1 ? "" : "s"}
+                        <div
+                          className="size-9 rounded-md flex items-center justify-center text-base shrink-0"
+                          style={{
+                            backgroundColor: f.color ?? "rgba(255,255,255,0.06)",
+                          }}
+                        >
+                          {f.icon ?? "📁"}
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] text-white truncate">{localizeTitle(f, t)}</div>
+                          <div className="text-[11px] text-white/40 truncate">
+                            {fileCount === 1
+                              ? t("trash.deletedAtOne", { date: formatDate(f.deletedAt ?? "") })
+                              : t("trash.deletedAt", {
+                                  date: formatDate(f.deletedAt ?? ""),
+                                  count: localizeNumber(fileCount, lang),
+                                })}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            restoreFolder(String(f.id))
+                            toast.success(t("toast.restored"))
+                          }}
+                          className="h-7 px-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[12px] text-white/70 hover:text-white border border-white/[0.06] flex items-center gap-1.5"
+                        >
+                          <RotateCcw className="size-3" />
+                          {t("trash.restore")}
+                        </button>
+                        <button
+                          onClick={() => {
+                            permanentlyDeleteFolder(String(f.id))
+                            toast.success(t("toast.permanentlyDeleted"))
+                          }}
+                          className="h-7 px-2.5 rounded-full hover:bg-red-500/10 text-[12px] text-white/50 hover:text-red-400 flex items-center gap-1.5"
+                        >
+                          <Trash2 className="size-3" />
+                          {t("trash.permanent")}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => {
-                          restoreFolder(String(f.id))
-                          toast.success("Folder restored")
-                        }}
-                        className="h-7 px-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[12px] text-white/70 hover:text-white border border-white/[0.06] flex items-center gap-1.5"
-                      >
-                        <RotateCcw className="size-3" />
-                        Restore
-                      </button>
-                      <button
-                        onClick={() => {
-                          permanentlyDeleteFolder(String(f.id))
-                          toast.success("Permanently deleted")
-                        }}
-                        className="h-7 px-2.5 rounded-full hover:bg-red-500/10 text-[12px] text-white/50 hover:text-red-400 flex items-center gap-1.5"
-                      >
-                        <Trash2 className="size-3" />
-                        Forever
-                      </button>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -146,27 +157,29 @@ export function TrashView() {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
                   >
-                    <h3 className="text-base font-semibold text-white mb-1">Empty trash?</h3>
+                    <h3 className="text-base font-semibold text-white mb-1">{t("trash.confirmEmpty")}</h3>
                     <p className="text-[13px] text-white/50">
-                      This permanently deletes all {trashed.length} folder{trashed.length === 1 ? "" : "s"} in the trash. This cannot be undone.
+                      {trashed.length === 1
+                        ? t("trash.confirmEmptyDescOne")
+                        : t("trash.confirmEmptyDesc", { count: localizeNumber(trashed.length, lang) })}
                     </p>
                     <div className="flex justify-end gap-2 mt-4">
                       <button
                         onClick={() => setConfirmEmpty(false)}
                         className="px-3 py-1.5 rounded-full text-[13px] text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
                       >
-                        Cancel
+                        {t("action.cancel")}
                       </button>
                       <button
                         onClick={() => {
                           emptyTrash()
                           setConfirmEmpty(false)
-                          toast.success("Trash emptied")
+                          toast.success(t("trash.toastEmptied"))
                         }}
                         className="px-3 py-1.5 rounded-full text-[13px] font-medium text-white transition-colors"
                         style={{ backgroundColor: "oklch(0.5801 0.227 25.12)" }}
                       >
-                        Empty trash
+                        {t("trash.emptyButton")}
                       </button>
                     </div>
                   </motion.div>

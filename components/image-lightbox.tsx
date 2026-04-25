@@ -1,6 +1,9 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import type { TranslationKey } from "@/lib/i18n-dict"
+import { formatBytesLocalized, formatDateLocalized, localizeNumber, localizeTag, localizeTitle } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   ChevronLeft, ChevronRight, X, Star, Download, Trash2, Info,
@@ -16,26 +19,6 @@ import { AnnotationsCanvas } from "./annotations-canvas"
 import { VideoPlayerInline } from "./video-player-inline"
 import { PdfPreview } from "./pdf-preview"
 import { FileCommentsThread } from "./file-comments"
-
-function formatBytes(n?: number): string {
-  if (!n) return ""
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function formatDate(iso?: string): string {
-  if (!iso) return ""
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
-  } catch {
-    return iso
-  }
-}
 
 export function ImageLightbox() {
   const {
@@ -53,6 +36,16 @@ export function ImageLightbox() {
     setFileGeo,
     setFileAnnotations,
   } = useFolders()
+  const { t, lang } = useT()
+  const formatBytes = (n?: number) => (n ? formatBytesLocalized(n, t, lang) : "")
+  const formatDate = (iso?: string) => {
+    if (!iso) return ""
+    try {
+      return formatDateLocalized(new Date(iso), t, lang)
+    } catch {
+      return iso
+    }
+  }
   const [showInfo, setShowInfo] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [annotationsVisible, setAnnotationsVisible] = useState(true)
@@ -164,7 +157,7 @@ export function ImageLightbox() {
   const handleDelete = () => {
     if (!lightbox || !current) return
     deleteFile(lightbox.folderId, current.id)
-    toast.success("File removed")
+    toast.success(t("lightbox.fileRemoved"))
     if (files.length <= 1) {
       closeLightbox()
     } else {
@@ -210,14 +203,14 @@ export function ImageLightbox() {
                 <button
                   onClick={() => rotateFile(lightbox.folderId, current.id, -90)}
                   className="size-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
-                  title="Rotate left (Shift+R)"
+                  title={t("lightbox.rotateLeft")}
                 >
                   <RotateCcw className="size-4" />
                 </button>
                 <button
                   onClick={() => rotateFile(lightbox.folderId, current.id, 90)}
                   className="size-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
-                  title="Rotate right (R)"
+                  title={t("lightbox.rotateRight")}
                 >
                   <RotateCw className="size-4" />
                 </button>
@@ -226,7 +219,7 @@ export function ImageLightbox() {
                   className={`size-9 flex items-center justify-center rounded-full ${
                     current.flipH ? "bg-white/[0.1] text-white" : "text-white/60 hover:text-white hover:bg-white/[0.08]"
                   }`}
-                  title="Flip horizontal"
+                  title={t("lightbox.flipHTitle")}
                 >
                   <FlipHorizontal className="size-4" />
                 </button>
@@ -235,7 +228,7 @@ export function ImageLightbox() {
                   className={`size-9 flex items-center justify-center rounded-full ${
                     current.flipV ? "bg-white/[0.1] text-white" : "text-white/60 hover:text-white hover:bg-white/[0.08]"
                   }`}
-                  title="Flip vertical"
+                  title={t("lightbox.flipVTitle")}
                 >
                   <FlipVertical className="size-4" />
                 </button>
@@ -244,7 +237,7 @@ export function ImageLightbox() {
                   className={`size-9 flex items-center justify-center rounded-full ${
                     eyedropperOn ? "bg-emerald-500/20 text-emerald-300" : "text-white/60 hover:text-white hover:bg-white/[0.08]"
                   }`}
-                  title="Eyedropper"
+                  title={t("lightbox.eyedropper")}
                 >
                   <Pipette className="size-4" />
                 </button>
@@ -253,7 +246,7 @@ export function ImageLightbox() {
                   className={`size-9 flex items-center justify-center rounded-full ${
                     annotationsVisible ? "bg-white/[0.08] text-white" : "text-white/60 hover:text-white hover:bg-white/[0.08]"
                   }`}
-                  title="Annotations"
+                  title={t("lightbox.annotationsTitle")}
                 >
                   <PenLine className="size-4" />
                 </button>
@@ -265,7 +258,7 @@ export function ImageLightbox() {
               className={`size-9 flex items-center justify-center rounded-full ${
                 showComments ? "bg-white/[0.1] text-white" : "text-white/60 hover:text-white hover:bg-white/[0.08]"
               }`}
-              title="Comments (C)"
+              title={t("lightbox.commentsBtn")}
             >
               <MessageCircle className="size-4" />
               {(current.comments?.length ?? 0) > 0 && (
@@ -279,7 +272,7 @@ export function ImageLightbox() {
                   ? "text-yellow-300 bg-yellow-300/10"
                   : "text-white/60 hover:text-white hover:bg-white/[0.08]"
               }`}
-              title="Favorite (F)"
+              title={t("lightbox.favBtn")}
             >
               <Star className={`size-4 ${current.favorite ? "fill-yellow-300" : ""}`} />
             </button>
@@ -288,29 +281,29 @@ export function ImageLightbox() {
               className={`size-9 flex items-center justify-center rounded-full transition-colors ${
                 showInfo ? "text-white bg-white/[0.1]" : "text-white/60 hover:text-white hover:bg-white/[0.08]"
               }`}
-              title="Info (I)"
+              title={t("lightbox.infoBtn")}
             >
               <Info className="size-4" />
             </button>
             <button
               onClick={handleDownload}
               className="size-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors"
-              title="Download"
+              title={t("action.download")}
             >
               <Download className="size-4" />
             </button>
             <button
               onClick={handleDelete}
               className="size-9 flex items-center justify-center rounded-full text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              title="Delete"
+              title={t("action.delete")}
             >
               <Trash2 className="size-4" />
             </button>
             <button
               onClick={closeLightbox}
               className="size-9 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors"
-              aria-label="Close lightbox"
-              title="Close (Esc)"
+              aria-label={t("lightbox.close")}
+              title={t("lightbox.closeTitle")}
             >
               <X className="size-4" />
             </button>
@@ -371,8 +364,8 @@ export function ImageLightbox() {
                   goPrev()
                 }}
                 className="absolute left-3 sm:left-6 size-12 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/80 hover:text-white border border-white/[0.08] backdrop-blur-md transition-colors"
-                aria-label="Previous file"
-                title="Previous (←)"
+                aria-label={t("lightbox.prev")}
+                title={t("lightbox.prevTitle")}
               >
                 <ChevronLeft className="size-5" />
               </button>
@@ -382,8 +375,8 @@ export function ImageLightbox() {
                   goNext()
                 }}
                 className="absolute right-3 sm:right-6 size-12 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/80 hover:text-white border border-white/[0.08] backdrop-blur-md transition-colors"
-                aria-label="Next file"
-                title="Next (→)"
+                aria-label={t("lightbox.next")}
+                title={t("lightbox.nextTitle")}
               >
                 <ChevronRight className="size-5" />
               </button>
@@ -403,25 +396,25 @@ export function ImageLightbox() {
               >
                 <div className="p-5 pt-20 space-y-4">
                   <div>
-                    <h3 className="text-[14px] font-semibold text-white">File details</h3>
+                    <h3 className="text-[14px] font-semibold text-white">{t("lightbox.fileDetails")}</h3>
                   </div>
                   <div className="space-y-3 text-[12px]">
-                    <Detail label="Name" value={current.name} />
-                    <Detail label="Type" value={current.type.toUpperCase()} />
-                    <Detail label="Size" value={formatBytes(current.size) || "—"} />
-                    <Detail label="Uploaded" value={formatDate(current.uploadedAt)} />
-                    <Detail label="Folder" value={folder?.title ?? "—"} />
-                    {current.description && <Detail label="Description" value={current.description} multi />}
+                    <Detail label={t("lightbox.detailName")} value={current.name} />
+                    <Detail label={t("lightbox.detailType")} value={t(`fileFilter.${current.type}` as TranslationKey)} />
+                    <Detail label={t("lightbox.detailSize")} value={formatBytes(current.size) || "—"} />
+                    <Detail label={t("lightbox.detailUploaded")} value={formatDate(current.uploadedAt)} />
+                    <Detail label={t("lightbox.detailFolder")} value={folder ? localizeTitle(folder, t) : "—"} />
+                    {current.description && <Detail label={t("lightbox.detailDescription")} value={current.description} multi />}
                     {current.tags && current.tags.length > 0 && (
                       <div>
-                        <div className="text-white/40 text-[11px] mb-1">Tags</div>
+                        <div className="text-white/40 text-[11px] mb-1">{t("lightbox.detailTags")}</div>
                         <div className="flex flex-wrap gap-1">
-                          {current.tags.map((t) => (
+                          {current.tags.map((tag) => (
                             <span
-                              key={t}
+                              key={tag}
                               className="px-2 py-0.5 rounded-full bg-white/[0.06] text-[11px] text-white/70"
                             >
-                              {t}
+                              {localizeTag(tag, t)}
                             </span>
                           ))}
                         </div>
@@ -429,15 +422,17 @@ export function ImageLightbox() {
                     )}
                     {current.aiTags && current.aiTags.length > 0 && (
                       <div>
-                        <div className="text-white/40 text-[11px] mb-1">AI tags</div>
+                        <div className="text-white/40 text-[11px] mb-1">{t("lightbox.detailAiTags")}</div>
                         <div className="flex flex-wrap gap-1">
-                          {current.aiTags.map((t) => (
+                          {current.aiTags.map((tag) => (
                             <span
-                              key={t.tag}
+                              key={tag.tag}
                               className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-[11px] text-violet-200"
                             >
-                              {t.tag}{" "}
-                              <span className="text-violet-300/60 font-mono text-[9px]">{t.confidence}%</span>
+                              {localizeTag(tag.tag, t)}{" "}
+                              <span className="text-violet-300/60 font-mono text-[9px]">
+                                {localizeNumber(tag.confidence, lang)}%
+                              </span>
                             </span>
                           ))}
                         </div>
@@ -445,19 +440,19 @@ export function ImageLightbox() {
                     )}
                     {current.palette && current.palette.length > 0 && (
                       <div>
-                        <div className="text-white/40 text-[11px] mb-1">Palette</div>
+                        <div className="text-white/40 text-[11px] mb-1">{t("lightbox.detailPalette")}</div>
                         <ColorPaletteBar palette={current.palette} size="md" />
                       </div>
                     )}
                     {current.geo && (
                       <Detail
-                        label="Location"
+                        label={t("lightbox.detailLocation")}
                         value={`${current.geo.lat.toFixed(3)}, ${current.geo.lng.toFixed(3)}`}
                       />
                     )}
                     {current.ocrText && (
                       <div>
-                        <div className="text-white/40 text-[11px] mb-1">OCR</div>
+                        <div className="text-white/40 text-[11px] mb-1">{t("lightbox.detailOcr")}</div>
                         <p className="text-[11px] text-white/70 italic bg-white/[0.03] border border-white/[0.06] rounded p-2">
                           {current.ocrText}
                         </p>
@@ -484,7 +479,7 @@ export function ImageLightbox() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="px-4 pt-20 pb-3 border-b border-white/[0.06]">
-                  <h3 className="text-[14px] font-semibold text-white">Discussion</h3>
+                  <h3 className="text-[14px] font-semibold text-white">{t("lightbox.discussion")}</h3>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
                   <FileCommentsThread folderId={lightbox.folderId} fileId={current.id} />

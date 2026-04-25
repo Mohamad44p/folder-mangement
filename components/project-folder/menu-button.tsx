@@ -4,6 +4,7 @@ import { useState } from "react"
 import type { Project } from "@/lib/data"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreVertical, Pencil, Trash2, X } from "lucide-react"
+import { useT } from "@/contexts/i18n-context"
 
 interface MenuButtonProps {
   project: Project
@@ -16,6 +17,7 @@ interface MenuButtonProps {
 }
 
 export function MenuButton({ project, onOpenChange, onRemove, onCancel, onRename, hideEdit, isVisible = false }: MenuButtonProps) {
+  const { t } = useT()
   const [isOpen, setIsOpen] = useState(false)
 
   const handleOpenChange = (open: boolean) => {
@@ -40,7 +42,8 @@ export function MenuButton({ project, onOpenChange, onRemove, onCancel, onRename
         align="end"
         side="top"
         sideOffset={4}
-        className="w-40 bg-[#1a1a1a] border-white/[0.08] rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.5)]"
+        className="w-40 bg-[#1a1a1a] border-white/[0.08] rounded-lg"
+        style={{ boxShadow: "var(--menu-shadow)" }}
         onClick={(e) => e.stopPropagation()}
       >
         {project.isGenerating ? (
@@ -49,7 +52,7 @@ export function MenuButton({ project, onOpenChange, onRemove, onCancel, onRename
             onClick={onCancel}
           >
             <X className="w-4 h-4 transition-colors group-hover:text-red-400 group-focus:text-red-400" />
-            Cancel
+            {t("action.cancel")}
           </DropdownMenuItem>
         ) : (
           <>
@@ -59,7 +62,7 @@ export function MenuButton({ project, onOpenChange, onRemove, onCancel, onRename
                 onClick={onRename}
               >
                 <Pencil className="w-4 h-4" />
-                Rename
+                {t("action.rename")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -67,7 +70,7 @@ export function MenuButton({ project, onOpenChange, onRemove, onCancel, onRename
               onClick={onRemove}
             >
               <Trash2 className="w-4 h-4 transition-colors group-hover:text-red-400 group-focus:text-red-400" />
-              Delete
+              {t("folder.delete")}
             </DropdownMenuItem>
           </>
         )}

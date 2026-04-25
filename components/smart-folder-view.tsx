@@ -1,7 +1,10 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import type { TranslationKey } from "@/lib/i18n-dict"
 import { describeSmartFolder, evaluateSmartFolder } from "@/lib/smart-folder-engine"
+import { formatBytesLocalized, localizeNumber, localizeTitle } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   X,
@@ -25,11 +28,10 @@ const FILE_ICONS = {
   other: FileIcon,
 } as const
 
-function formatBytes(n?: number): string {
-  if (!n) return ""
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+const SMART_NAME_KEYS: Record<string, TranslationKey> = {
+  "All favorites": "smart.allFavorites",
+  "Uploaded this week": "smart.uploadedThisWeek",
+  "Large files": "smart.largeFiles",
 }
 
 export function SmartFolderView() {
@@ -43,7 +45,9 @@ export function SmartFolderView() {
     openLightbox,
     openFolder: openParentFolder,
     toggleFileFavorite,
+    getFolder,
   } = useFolders()
+  const { t, lang } = useT()
 
   const smart = useMemo(
     () => smartFolders.find((s) => s.id === openSmartFolderId),
@@ -82,26 +86,28 @@ export function SmartFolderView() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-[15px] font-semibold text-white truncate">{smart.name}</h3>
+                  <h3 className="text-[15px] font-semibold text-white truncate">
+                    {SMART_NAME_KEYS[smart.name] ? t(SMART_NAME_KEYS[smart.name]) : smart.name}
+                  </h3>
                   <span className="px-1.5 py-0.5 rounded-full bg-violet-500/10 text-[10px] text-violet-200 border border-violet-500/20 flex items-center gap-1">
                     <Sparkles className="size-2.5" />
-                    Smart
+                    {t("smartView.smartBadge")}
                   </span>
                 </div>
-                <div className="text-[11px] text-white/40 truncate">{describeSmartFolder(smart)}</div>
+                <div className="text-[11px] text-white/40 truncate">{describeSmartFolder(smart, t)}</div>
               </div>
               <button
                 onClick={() => setSmartFolderEditor({ mode: "edit", id: smart.id })}
                 className="h-8 px-3 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[12px] text-white/70 hover:text-white flex items-center gap-1.5"
               >
                 <Pencil className="size-3" />
-                Edit
+                {t("action.edit")}
               </button>
               <button
                 onClick={() => {
                   deleteSmartFolder(smart.id)
                   openSmartFolder(null)
-                  toast.success("Smart folder deleted")
+                  toast.success(t("toast.smartFolderDeleted"))
                 }}
                 className="size-8 flex items-center justify-center rounded-full hover:bg-red-500/10 text-white/40 hover:text-red-400"
               >
@@ -121,19 +127,23 @@ export function SmartFolderView() {
                   <div className="size-12 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-2">
                     <Sparkles className="size-5 text-white/30" />
                   </div>
-                  <p className="text-sm text-white/50">No files match these rules.</p>
-                  <p className="text-[12px] text-white/30 mt-1">
-                    Edit the rules or upload more files.
-                  </p>
+                  <p className="text-sm text-white/50">{t("smartView.empty")}</p>
+                  <p className="text-[12px] text-white/30 mt-1">{t("smartView.emptyDesc")}</p>
                 </div>
               ) : (
                 <>
                   <div className="text-[11px] uppercase tracking-wider text-white/40 mb-3">
-                    {result.files.length} matching file{result.files.length === 1 ? "" : "s"}
+                    {result.files.length === 1
+                      ? t("smartView.matchesOne")
+                      : t("smartView.matchesN", { n: localizeNumber(result.files.length, lang) })}
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {result.files.map(({ file, folderId, folderTitle }) => {
                       const Icon = FILE_ICONS[file.type] ?? FileIcon
+                      const folder = getFolder(folderId)
+                      const localizedFolderTitle = folder
+                        ? localizeTitle({ id: folderId, title: folder.title }, t)
+                        : folderTitle
                       return (
                         <div
                           key={`${folderId}-${file.id}`}
@@ -175,7 +185,7 @@ export function SmartFolderView() {
                                   openParentFolder(folderId)
                                 }}
                                 className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-white backdrop-blur-sm"
-                                title="Open folder"
+                                title={t("smartView.openFolder")}
                               >
                                 <ExternalLink className="size-3" />
                               </button>
@@ -187,11 +197,11 @@ export function SmartFolderView() {
                               onClick={() => openParentFolder(folderId)}
                               className="text-[10px] text-white/40 hover:text-white truncate flex items-center gap-1"
                             >
-                              {folderTitle}
+                              {localizedFolderTitle}
                             </button>
                             <div className="flex justify-between mt-0.5 text-[10px] text-white/40">
-                              <span>{formatBytes(file.size)}</span>
-                              <span className="uppercase">{file.type}</span>
+                              <span>{file.size ? formatBytesLocalized(file.size, t, lang) : ""}</span>
+                              <span className="uppercase">{t(`fileFilter.${file.type}` as TranslationKey)}</span>
                             </div>
                           </div>
                         </div>

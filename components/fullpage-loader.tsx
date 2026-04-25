@@ -46,7 +46,10 @@ export function FullpageLoader({ duration = 1600, onComplete }: FullpageLoaderPr
   if (!isVisible) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0A0A0A]">
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+      style={{ backgroundColor: "var(--loader-bg)" }}
+    >
       <div
         style={{
           opacity: isExiting ? 0 : 1,
@@ -55,17 +58,29 @@ export function FullpageLoader({ duration = 1600, onComplete }: FullpageLoaderPr
         }}
       >
         <div className="flex flex-col items-center">
-          <div className="relative mb-6 w-10 h-[72px] bg-white/5 border border-white/10 overflow-hidden rounded-sm">
+          <div
+            className="relative mb-6 w-10 h-[72px] overflow-hidden rounded-sm border"
+            style={{
+              backgroundColor: "var(--loader-track)",
+              borderColor: "var(--loader-track-border)",
+            }}
+          >
             <div
-              className="absolute left-0 right-0 h-[1px] bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.5)]"
-              style={{ top: `${loadingProgress}%`, transition: "top 100ms cubic-bezier(0.32, 0.72, 0, 1)" }}
+              className="absolute left-0 right-0 h-[1px]"
+              style={{
+                top: `${loadingProgress}%`,
+                transition: "top 100ms cubic-bezier(0.32, 0.72, 0, 1)",
+                backgroundColor: "var(--loader-line)",
+                boxShadow: "0 0 8px var(--loader-line-glow)",
+              }}
             />
             <div
-              className="absolute inset-x-0 bg-gradient-to-t from-white/10 to-transparent"
+              className="absolute inset-x-0"
               style={{
                 height: `${loadingProgress}%`,
                 top: 0,
                 transition: "height 100ms cubic-bezier(0.32, 0.72, 0, 1)",
+                background: "linear-gradient(to top, var(--loader-fill-grad), transparent)",
               }}
             />
             <div className="absolute bottom-1 left-1 right-1 flex flex-col items-start gap-0.5">
@@ -79,21 +94,32 @@ export function FullpageLoader({ duration = 1600, onComplete }: FullpageLoaderPr
                     className="h-[2px] rounded-full transition-all duration-500 ease-out"
                     style={{
                       width: isActive ? finalWidths[i] : "0%",
-                      backgroundColor: isActive ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.1)",
+                      backgroundColor: isActive
+                        ? "var(--loader-progress-active)"
+                        : "var(--loader-progress-inactive)",
                     }}
                   />
                 )
               })}
             </div>
           </div>
-          <h1 className="font-semibold tracking-tight text-white/90 text-2xl">Restream Clips</h1>
+          <h1
+            className="font-semibold tracking-tight text-2xl"
+            style={{ color: "var(--fg-primary)" }}
+          >
+            Folders
+          </h1>
           <div className="mt-4 w-52">
-            <div className="rounded-full bg-white/10 overflow-hidden h-1.5 w-full">
+            <div
+              className="rounded-full overflow-hidden h-1.5 w-full"
+              style={{ backgroundColor: "var(--loader-bar-bg)" }}
+            >
               <div
-                className="h-full bg-white/60 rounded-full"
+                className="h-full rounded-full"
                 style={{
                   width: `${loadingProgress}%`,
                   transition: "width 100ms cubic-bezier(0.32, 0.72, 0, 1)",
+                  backgroundColor: "var(--loader-bar-fill)",
                 }}
               />
             </div>

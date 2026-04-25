@@ -2,19 +2,29 @@
 
 import { useState } from "react"
 import { Heart } from "lucide-react"
+import { useT } from "@/contexts/i18n-context"
+import type { TranslationKey } from "@/lib/i18n-dict"
 
 interface SidebarProps {
-  onNavigate?: (view: "clips" | "favorites" | "settings") => void
-  activeView?: "clips" | "favorites" | "settings"
+  onNavigate?: (view: "folders" | "favorites" | "settings") => void
+  activeView?: "folders" | "favorites" | "settings"
 }
 
-const navItems = [
-  { name: "Home", icon: "home" },
-  { name: "History", icon: "history" },
-  { name: "Clips", icon: "clips", view: "clips" as const },
-  { name: "Storage", icon: "storage" },
-  { name: "Channels", icon: "channels" },
-  { name: "Analytics", icon: "analytics" },
+const navItems: { nameKey: TranslationKey; icon: string; view?: "folders" }[] = [
+  { nameKey: "sidebar.home", icon: "home" },
+  { nameKey: "sidebar.recentNav", icon: "history" },
+  { nameKey: "sidebar.foldersNav", icon: "folders", view: "folders" },
+  { nameKey: "sidebar.storage", icon: "storage" },
+  { nameKey: "sidebar.shared", icon: "channels" },
+  { nameKey: "sidebar.activity", icon: "analytics" },
+]
+
+const FOOTER_LINKS: TranslationKey[] = [
+  "footer.pricing",
+  "footer.help",
+  "footer.changelog",
+  "footer.terms",
+  "footer.about",
 ]
 
 function NavIcon({ type }: { type: string }) {
@@ -39,20 +49,13 @@ function NavIcon({ type }: { type: string }) {
           />
         </svg>
       )
-    case "clips":
+    case "folders":
       return (
-        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path
-            d="M13.8899 4.00123L14.6663 4.33398L13.8899 4.66674C13.0403 5.03088 12.3632 5.7079 11.9991 6.55755L11.6663 7.33398L11.3336 6.55755C10.9694 5.7079 10.2924 5.03088 9.44277 4.66674L8.66634 4.33398L9.44277 4.00123C10.2924 3.63709 10.9694 2.96007 11.3336 2.11041L11.6663 1.33398L11.9991 2.11042C12.3632 2.96007 13.0403 3.63709 13.8899 4.00123Z"
-            stroke="currentColor"
-            strokeWidth={1}
+            strokeLinecap="round"
             strokeLinejoin="round"
-          />
-          <path
-            d="M8.65286 9.08543L10.6663 10.0007L8.65286 10.9159C7.88249 11.266 7.26506 11.8835 6.91489 12.6538L5.99967 14.6673L5.08446 12.6538C4.73429 11.8835 4.11686 11.266 3.34648 10.9159L1.33301 10.0007L3.34649 9.08543C4.11686 8.73526 4.73429 8.11784 5.08446 7.34746L5.99967 5.33398L6.91489 7.34746C7.26506 8.11784 7.88249 8.73526 8.65286 9.08543Z"
-            stroke="currentColor"
-            strokeWidth={1}
-            strokeLinejoin="round"
+            d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"
           />
         </svg>
       )
@@ -93,7 +96,8 @@ function NavIcon({ type }: { type: string }) {
   }
 }
 
-export function Sidebar({ onNavigate, activeView = "clips" }: SidebarProps) {
+export function Sidebar({ onNavigate, activeView = "folders" }: SidebarProps) {
+  const { t } = useT()
   const [workspaceOpen, setWorkspaceOpen] = useState(true)
 
   return (
@@ -107,15 +111,15 @@ export function Sidebar({ onNavigate, activeView = "clips" }: SidebarProps) {
               d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z"
             />
           </svg>
-          Invite members
+          {t("sidebar.invite")}
         </button>
       </div>
 
       <div className="px-3 pt-4 pb-1">
         <div className="flex items-center justify-between mb-1.5 px-1.5">
-          <span className="text-white/30 text-[10px] font-semibold uppercase tracking-widest">Workspaces</span>
+          <span className="text-white/30 text-[10px] font-semibold uppercase tracking-widest">{t("sidebar.workspacesLabel")}</span>
           <button className="text-white/30 hover:text-white/50 text-[11px] font-medium transition-colors duration-200">
-            + Add
+            {t("sidebar.addWorkspace")}
           </button>
         </div>
         <button
@@ -125,7 +129,7 @@ export function Sidebar({ onNavigate, activeView = "clips" }: SidebarProps) {
           <div className="w-5 h-5 rounded-md bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] flex items-center justify-center text-white/50 text-[10px] font-semibold shadow-sm">
             D
           </div>
-          <span className="flex-1 text-left text-white/70 text-[13px] font-medium">Default</span>
+          <span className="flex-1 text-left text-white/70 text-[13px] font-medium">{t("sidebar.defaultWorkspace")}</span>
           <svg
             className={`w-3.5 h-3.5 text-white/30 transition-transform duration-200 ${workspaceOpen ? "rotate-0" : "-rotate-90"}`}
             fill="none"
@@ -145,7 +149,7 @@ export function Sidebar({ onNavigate, activeView = "clips" }: SidebarProps) {
               const isActive = item.view ? activeView === item.view : false
               return (
                 <button
-                  key={item.name}
+                  key={item.nameKey}
                   onClick={() => item.view && onNavigate?.(item.view)}
                   className={`flex items-center gap-2.5 w-full px-2 py-1.5 rounded-md text-[13px] font-medium transition-all duration-200 ${
                     isActive
@@ -156,7 +160,7 @@ export function Sidebar({ onNavigate, activeView = "clips" }: SidebarProps) {
                   <span className={isActive ? "text-white" : "text-white/40"}>
                     <NavIcon type={item.icon} />
                   </span>
-                  <span className="flex-1 text-left tracking-[-0.01em]">{item.name}</span>
+                  <span className="flex-1 text-left tracking-[-0.01em]">{t(item.nameKey)}</span>
                 </button>
               )
             })}
@@ -166,12 +170,12 @@ export function Sidebar({ onNavigate, activeView = "clips" }: SidebarProps) {
 
       <div className="px-4 py-3 mt-auto border-t border-white/[0.06]">
         <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-          {["Pricing", "Help Center", "Changelog", "Terms", "About"].map((link) => (
+          {FOOTER_LINKS.map((link) => (
             <button
               key={link}
               className="text-white/25 hover:text-white/40 text-[10px] font-medium transition-colors duration-200"
             >
-              {link}
+              {t(link)}
             </button>
           ))}
         </div>

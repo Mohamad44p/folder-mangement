@@ -1,6 +1,8 @@
 "use client"
 
 import type { ActivityEntry, ActivityKind } from "@/lib/data"
+import { useT } from "@/contexts/i18n-context"
+import { formatDateLocalized, localizeNumber } from "@/lib/localize"
 import {
   FilePlus,
   Pencil,
@@ -41,28 +43,29 @@ const ICONS: Record<ActivityKind, typeof Pencil> = {
   annotated: PenLine,
 }
 
-function relTime(iso: string): string {
-  try {
-    const diff = Date.now() - new Date(iso).getTime()
-    const min = Math.round(diff / 60_000)
-    if (min < 1) return "just now"
-    if (min < 60) return `${min}m ago`
-    const hr = Math.round(min / 60)
-    if (hr < 24) return `${hr}h ago`
-    const day = Math.round(hr / 24)
-    if (day < 30) return `${day}d ago`
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-  } catch {
-    return ""
-  }
-}
-
 export function ActivityTimeline({ entries }: { entries: ActivityEntry[] }) {
+  const { t, lang } = useT()
+
+  const relTime = (iso: string): string => {
+    try {
+      const diff = Date.now() - new Date(iso).getTime()
+      const min = Math.round(diff / 60_000)
+      if (min < 1) return t("common.justNow")
+      if (min < 60) return t("common.minutesAgo", { n: localizeNumber(min, lang) })
+      const hr = Math.round(min / 60)
+      if (hr < 24) return t("common.hoursAgo", { n: localizeNumber(hr, lang) })
+      const day = Math.round(hr / 24)
+      if (day < 30) return t("common.daysAgo", { n: localizeNumber(day, lang) })
+      return formatDateLocalized(new Date(iso), t, lang)
+    } catch {
+      return ""
+    }
+  }
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-sm text-white/40">No activity yet.</p>
-        <p className="text-[12px] text-white/30 mt-1">Changes will appear here.</p>
+        <p className="text-sm text-white/40">{t("activity.empty")}</p>
       </div>
     )
   }
@@ -86,7 +89,7 @@ export function ActivityTimeline({ entries }: { entries: ActivityEntry[] }) {
             <div className="flex-1 min-w-0 pb-1">
               <div className="text-[12px] text-white/85">
                 <span className="font-medium text-white">{e.actor}</span>{" "}
-                <span className="text-white/60">{e.description.charAt(0).toLowerCase() + e.description.slice(1)}</span>
+                <span className="text-white/60">{e.description}</span>
               </div>
               <div className="text-[10px] text-white/40 mt-0.5">{relTime(e.timestamp)}</div>
             </div>

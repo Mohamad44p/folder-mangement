@@ -2,6 +2,8 @@
 
 import * as Popover from "@radix-ui/react-popover"
 import { useFolders, type FolderTreeNode } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeTitle } from "@/lib/localize"
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Home } from "lucide-react"
 import { useMemo, useState, type ReactNode } from "react"
 
@@ -29,6 +31,7 @@ function TreeRow({
   toggleExpand: (id: string) => void
   onSelect: (id: string) => void
 }) {
+  const { t } = useT()
   const id = String(node.folder.id)
   const isExcluded = excludeIds.has(id)
   const isExpanded = expanded.has(id)
@@ -65,7 +68,7 @@ function TreeRow({
           ) : null}
         </button>
         <span className="text-xs shrink-0">{node.folder.icon ?? (isExpanded ? "📂" : "📁")}</span>
-        <span className="text-[12px] truncate">{node.folder.title}</span>
+        <span className="text-[12px] truncate">{localizeTitle(node.folder, t)}</span>
       </div>
       {isExpanded && hasChildren && (
         <div>
@@ -95,6 +98,7 @@ export function MoveToPopover({
   side = "bottom",
 }: MoveToPopoverProps) {
   const { getFolderTree } = useFolders()
+  const { t } = useT()
   const tree = getFolderTree()
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const s = new Set<string>()
@@ -130,7 +134,7 @@ export function MoveToPopover({
           className="z-[300] w-[280px] rounded-xl bg-[#1a1a1a] border border-white/[0.08] shadow-2xl p-2 max-h-[400px] overflow-y-auto"
         >
           <div className="text-[10px] uppercase tracking-wider text-white/40 px-2 py-1 mb-1">
-            Move to...
+            {t("move.title")}
           </div>
           {allowRoot && (
             <button
@@ -138,11 +142,11 @@ export function MoveToPopover({
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.06] text-white/80 hover:text-white text-left"
             >
               <Home className="size-3.5 text-white/50" />
-              <span className="text-[12px]">Root</span>
+              <span className="text-[12px]">{t("move.root")}</span>
             </button>
           )}
           {tree.length === 0 ? (
-            <div className="text-center text-white/40 text-[12px] py-4">No folders to move to.</div>
+            <div className="text-center text-white/40 text-[12px] py-4">{t("move.empty")}</div>
           ) : (
             tree.map((node) => (
               <TreeRow

@@ -1,6 +1,7 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
 import type { FolderFile } from "@/lib/data"
 import { useMemo, useState } from "react"
 
@@ -19,6 +20,7 @@ function project(lat: number, lng: number): { x: number; y: number } {
 
 export function MapView({ folderId, files }: MapViewProps) {
   const { openLightbox } = useFolders()
+  const { t } = useT()
   const [hover, setHover] = useState<string | null>(null)
 
   const points = useMemo(
@@ -32,8 +34,8 @@ export function MapView({ folderId, files }: MapViewProps) {
   if (points.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-white/[0.08] py-10 text-center">
-        <p className="text-sm text-white/40">No geotagged files in this folder.</p>
-        <p className="text-[12px] text-white/30 mt-1">Files with location data will pin here.</p>
+        <p className="text-sm text-white/40">{t("map.empty")}</p>
+        <p className="text-[12px] text-white/30 mt-1">{t("map.emptyDesc")}</p>
       </div>
     )
   }
@@ -44,16 +46,16 @@ export function MapView({ folderId, files }: MapViewProps) {
       <svg viewBox="0 0 100 50" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
         <defs>
           <pattern id="grid" width="5" height="5" patternUnits="userSpaceOnUse">
-            <path d="M 5 0 L 0 0 0 5" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.1" />
+            <path d="M 5 0 L 0 0 0 5" fill="none" stroke="var(--svg-grid)" strokeWidth="0.1" />
           </pattern>
         </defs>
         <rect width="100" height="50" fill="url(#grid)" />
         {/* Equator */}
-        <line x1="0" y1="25" x2="100" y2="25" stroke="rgba(255,255,255,0.06)" strokeWidth="0.2" />
+        <line x1="0" y1="25" x2="100" y2="25" stroke="var(--svg-line)" strokeWidth="0.2" />
         {/* Prime meridian */}
-        <line x1="50" y1="0" x2="50" y2="50" stroke="rgba(255,255,255,0.06)" strokeWidth="0.2" />
+        <line x1="50" y1="0" x2="50" y2="50" stroke="var(--svg-line)" strokeWidth="0.2" />
         {/* Stylized continent blobs */}
-        <g fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" strokeWidth="0.1">
+        <g fill="var(--svg-fill)" stroke="var(--svg-stroke)" strokeWidth="0.1">
           <ellipse cx="22" cy="20" rx="8" ry="9" />
           <ellipse cx="20" cy="35" rx="5" ry="9" />
           <ellipse cx="50" cy="20" rx="9" ry="8" />

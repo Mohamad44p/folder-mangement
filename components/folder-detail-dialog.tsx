@@ -51,6 +51,15 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { FileUploadZone } from "./file-upload-zone"
 import { ProjectFolder } from "./project-folder"
+import { useT } from "@/contexts/i18n-context"
+import {
+  formatBytesLocalized,
+  formatDateLocalized,
+  localizeNumber,
+  localizeTitle,
+  localizeTag,
+} from "@/lib/localize"
+import type { TranslationKey } from "@/lib/i18n-dict"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -83,61 +92,57 @@ const FILE_ICONS = {
   other: FileIcon,
 } as const
 
-const FILE_SORTS: { value: FileSortKey; label: string }[] = [
-  { value: "date-desc", label: "Newest first" },
-  { value: "date-asc", label: "Oldest first" },
-  { value: "name-asc", label: "Name A → Z" },
-  { value: "name-desc", label: "Name Z → A" },
-  { value: "size-desc", label: "Largest first" },
-  { value: "size-asc", label: "Smallest first" },
-  { value: "type", label: "By type" },
+const FILE_SORTS: { value: FileSortKey; key: TranslationKey }[] = [
+  { value: "date-desc", key: "fileSort.dateDesc" },
+  { value: "date-asc", key: "fileSort.dateAsc" },
+  { value: "name-asc", key: "fileSort.nameAsc" },
+  { value: "name-desc", key: "fileSort.nameDesc" },
+  { value: "size-desc", key: "fileSort.sizeDesc" },
+  { value: "size-asc", key: "fileSort.sizeAsc" },
+  { value: "type", key: "fileSort.type" },
 ]
 
-const FILE_FILTERS: { value: FileFilterKind; label: string }[] = [
-  { value: "all", label: "All files" },
-  { value: "favorites", label: "Favorites" },
-  { value: "image", label: "Images" },
-  { value: "video", label: "Videos" },
-  { value: "document", label: "Documents" },
-  { value: "other", label: "Other" },
+const FILE_FILTERS: { value: FileFilterKind; key: TranslationKey }[] = [
+  { value: "all", key: "fileFilter.all" },
+  { value: "favorites", key: "fileFilter.favorites" },
+  { value: "image", key: "fileFilter.image" },
+  { value: "video", key: "fileFilter.video" },
+  { value: "document", key: "fileFilter.document" },
+  { value: "other", key: "fileFilter.other" },
 ]
 
-const GROUP_OPTIONS: { value: GroupKind; label: string }[] = [
-  { value: "none", label: "No groups" },
-  { value: "type", label: "Group by type" },
-  { value: "date", label: "Group by date" },
+const GROUP_OPTIONS: { value: GroupKind; key: TranslationKey }[] = [
+  { value: "none", key: "group.none" },
+  { value: "type", key: "group.byType" },
+  { value: "date", key: "group.byDate" },
 ]
+
+const FILE_TYPE_GROUP_KEYS: Record<string, TranslationKey> = {
+  image: "fileGroup.images",
+  video: "fileGroup.videos",
+  document: "fileGroup.documents",
+  other: "fileGroup.others",
+}
 
 type TabKey = "files" | "notes" | "activity"
 
-function formatBytes(n?: number): string {
-  if (!n) return ""
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
-}
+type Tfn = (key: TranslationKey, vars?: Record<string, string | number>) => string
 
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso)
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
-  } catch {
-    return iso
-  }
-}
-
-function dateGroupKey(iso: string): string {
+function dateGroupKey(iso: string, t: Tfn): string {
   try {
     const d = new Date(iso)
     const now = new Date()
     const diffDays = Math.floor((+now - +d) / (1000 * 60 * 60 * 24))
-    if (diffDays < 1) return "Today"
-    if (diffDays < 7) return "This week"
-    if (diffDays < 30) return "This month"
-    if (d.getFullYear() === now.getFullYear()) return d.toLocaleDateString(undefined, { month: "long" })
+    if (diffDays < 1) return t("fileGroup.today")
+    if (diffDays < 7) return t("fileGroup.thisWeek")
+    if (diffDays < 30) return t("fileGroup.thisMonth")
+    if (d.getFullYear() === now.getFullYear()) {
+      const m = d.getMonth() + 1
+      return t(`month.${m}` as TranslationKey)
+    }
     return d.getFullYear().toString()
   } catch {
-    return "Other"
+    return t("fileGroup.other")
   }
 }
 
@@ -161,6 +166,7 @@ function FileGridItem({
   children?: React.ReactNode
 }) {
   const drag = useDraggable({ kind: "file", folderId, fileId: file.id, fileName: file.name })
+  const { t, lang } = useT()
 
   return (
     <div
@@ -183,7 +189,7 @@ function FileGridItem({
             ? "bg-sky-500 text-white opacity-100"
             : "bg-black/60 text-white/70 opacity-0 group-hover:opacity-100"
         }`}
-        aria-label="Select"
+        aria-label={t("folder.selectAll")}
       >
         {isSelected ? <CheckSquare className="size-3.5" /> : <Square className="size-3.5" />}
       </button>
@@ -212,7 +218,7 @@ function FileGridItem({
         {isCover && (
           <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[9px] uppercase tracking-wider text-white/80 border border-white/[0.06] flex items-center gap-1">
             <ImagePlus className="size-2.5" />
-            Cover
+            {t("detail.cover")}
           </div>
         )}
         {file.palette && file.palette.length > 0 && (
@@ -229,17 +235,21 @@ function FileGridItem({
           {file.name}
         </p>
         <div className="flex items-center justify-between mt-0.5">
-          <span className="text-[10px] text-white/40">{formatBytes(file.size)}</span>
-          <span className="text-[10px] text-white/40 uppercase">{file.type}</span>
+          <span className="text-[10px] text-white/40">
+            {file.size ? formatBytesLocalized(file.size, t, lang) : ""}
+          </span>
+          <span className="text-[10px] text-white/40 uppercase">
+            {t(`fileFilter.${file.type}` as TranslationKey)}
+          </span>
         </div>
         {file.aiTags && file.aiTags.length > 0 && (
           <div className="flex flex-wrap gap-0.5 mt-1">
-            {file.aiTags.slice(0, 3).map((t) => (
+            {file.aiTags.slice(0, 3).map((tag) => (
               <span
-                key={t.tag}
+                key={tag.tag}
                 className="px-1.5 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-[9px] text-violet-200"
               >
-                {t.tag}
+                {localizeTag(tag.tag, t)}
               </span>
             ))}
           </div>
@@ -265,16 +275,17 @@ function SubfolderDropTarget({
   children: React.ReactNode
 }) {
   const { moveFile, moveFolder } = useFolders()
+  const { t } = useT()
   const drop = useDropTarget({
     id: `sub-${folderId}`,
     accept: ["file", "folder"],
     onDropItem: (item) => {
       if (item.kind === "file") {
         moveFile(item.folderId, item.fileId, folderId)
-        toast.success("File moved")
+        toast.success(t("toast.fileMoved2"))
       } else if (item.kind === "folder" && item.folderId !== folderId) {
         moveFolder(item.folderId, folderId)
-        toast.success("Folder nested")
+        toast.success(t("toast.folderNested"))
       }
     },
     canDrop: (item) => item.kind === "folder" ? item.folderId !== folderId : true,
@@ -290,7 +301,7 @@ function SubfolderDropTarget({
       {drop.isOver && (
         <div className="absolute inset-0 rounded-2xl bg-sky-400/10 pointer-events-none flex items-center justify-center">
           <div className="px-3 py-1.5 rounded-full bg-sky-500 text-white text-[12px] font-medium">
-            Drop to move
+            {t("detail.dropToMove")}
           </div>
         </div>
       )}
@@ -338,6 +349,15 @@ export function FolderDetailDialog() {
     setFileAiTags,
     setFileOcr,
   } = useFolders()
+  const { t, lang } = useT()
+  const formatBytes = (n?: number) => (n ? formatBytesLocalized(n, t, lang) : "")
+  const formatDate = (iso: string) => {
+    try {
+      return formatDateLocalized(new Date(iso), t, lang)
+    } catch {
+      return iso
+    }
+  }
 
   const isOpen = openFolderId !== null
   const folder = openFolderId ? getFolder(openFolderId) : undefined
@@ -394,7 +414,11 @@ export function FolderDetailDialog() {
       if (!isTyping && (e.key === "Delete" || e.key === "Backspace") && selected.size > 0 && folder) {
         e.preventDefault()
         bulkDeleteFiles(String(folder.id), Array.from(selected))
-        toast.success(`Deleted ${selected.size} file${selected.size === 1 ? "" : "s"}`)
+        toast.success(
+          selected.size === 1
+            ? t("toast.deletedNFile", { n: selected.size })
+            : t("toast.deletedNFiles", { n: selected.size }),
+        )
         setSelected(new Set())
       }
       if (!isTyping && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && folder) {
@@ -469,16 +493,18 @@ export function FolderDetailDialog() {
   }, [folder, innerSearch, fileFilter, fileSort])
 
   const groupedFiles = useMemo(() => {
-    if (groupBy === "none") return [{ key: "All", items: filteredFiles }]
+    if (groupBy === "none") return [{ key: t("fileFilter.all"), items: filteredFiles }]
     const groups = new Map<string, FolderFile[]>()
     for (const f of filteredFiles) {
       const key =
-        groupBy === "type" ? f.type[0].toUpperCase() + f.type.slice(1) + "s" : dateGroupKey(f.uploadedAt)
+        groupBy === "type"
+          ? t(FILE_TYPE_GROUP_KEYS[f.type] ?? "fileGroup.others")
+          : dateGroupKey(f.uploadedAt, t)
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(f)
     }
     return Array.from(groups.entries()).map(([key, items]) => ({ key, items }))
-  }, [filteredFiles, groupBy])
+  }, [filteredFiles, groupBy, t])
 
   const filteredSubfolders = useMemo(() => {
     const q = innerSearch.trim().toLowerCase()
@@ -495,16 +521,20 @@ export function FolderDetailDialog() {
     return navigationStack
       .map((id) => getFolder(id))
       .filter(Boolean)
-      .map((f) => ({ id: String(f!.id), title: f!.title, icon: f!.icon }))
-  }, [navigationStack, getFolder])
+      .map((f) => ({
+        id: String(f!.id),
+        title: localizeTitle({ id: String(f!.id), title: f!.title }, t),
+        icon: f!.icon,
+      }))
+  }, [navigationStack, getFolder, t])
 
   if (!folder) return null
 
   const handleSaveTitle = () => {
-    const t = titleDraft.trim()
-    if (t && t !== folder.title) {
-      renameFolder(String(folder.id), t)
-      toast.success("Renamed folder")
+    const newTitle = titleDraft.trim()
+    if (newTitle && newTitle !== folder.title) {
+      renameFolder(String(folder.id), newTitle)
+      toast.success(t("toast.renamed"))
     }
     setTitleEditing(false)
   }
@@ -512,11 +542,11 @@ export function FolderDetailDialog() {
   const handleSaveTags = () => {
     const parsed = tagsDraft
       .split(",")
-      .map((t) => t.trim())
+      .map((tag) => tag.trim())
       .filter(Boolean)
     updateFolderMetadata(String(folder.id), { tags: parsed })
     setTagsEditing(false)
-    toast.success("Updated tags")
+    toast.success(t("toast.tagsUpdated"))
   }
 
   const handleDeleteFolder = () => {
@@ -524,7 +554,7 @@ export function FolderDetailDialog() {
     closeFolder()
     setTimeout(() => {
       deleteFolder(id)
-      toast.success("Moved to trash")
+      toast.success(t("toast.movedToTrashShort"))
     }, 200)
   }
 
@@ -612,10 +642,10 @@ export function FolderDetailDialog() {
                 <button
                   onClick={() => setShareDialogOpen(String(folder.id))}
                   className="h-7 px-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-200 flex items-center gap-1.5"
-                  title="Currently shared"
+                  title={t("detail.currentlyShared")}
                 >
                   <Share2 className="size-3" />
-                  Shared
+                  {t("detail.shared")}
                   {folder.share.sharedWith.length > 0 && (
                     <span className="text-[10px] text-emerald-300/80">
                       · {folder.share.sharedWith.length}
@@ -660,8 +690,8 @@ export function FolderDetailDialog() {
                       <button
                         className="shrink-0 size-12 rounded-xl flex items-center justify-center text-2xl transition-colors hover:scale-105 active:scale-95"
                         style={{
-                          backgroundColor: folder.color ?? "rgba(255,255,255,0.06)",
-                          border: "1px solid rgba(255,255,255,0.08)",
+                          backgroundColor: folder.color ?? "var(--surface-input-hover)",
+                          border: "1px solid var(--border-strong)",
                         }}
                       >
                         {folder.icon ?? "📁"}
@@ -693,13 +723,15 @@ export function FolderDetailDialog() {
                         }}
                         className="text-left text-xl sm:text-2xl font-semibold text-white hover:text-white/80 transition-colors truncate max-w-full"
                       >
-                        {folder.title}
+                        {localizeTitle(folder, t)}
                       </button>
                     )}
                     <div className="flex items-center gap-3 mt-1.5 text-[12px] text-white/40 flex-wrap">
                       <span className="flex items-center gap-1">
                         <Files className="size-3" />
-                        {itemCount} {itemCount === 1 ? "item" : "items"}
+                        {itemCount === 1
+                          ? t("detail.itemOne", { count: localizeNumber(itemCount, lang) })
+                          : t("detail.itemMany", { count: localizeNumber(itemCount, lang) })}
                       </span>
                       {totalSize > 0 && <span>· {formatBytes(totalSize)}</span>}
                       <span className="flex items-center gap-1">
@@ -707,7 +739,9 @@ export function FolderDetailDialog() {
                         {formatDate(folder.createdAt)}
                       </span>
                       {folder.updatedAt && folder.updatedAt !== folder.createdAt && (
-                        <span className="text-white/30">· Updated {formatDate(folder.updatedAt)}</span>
+                        <span className="text-white/30">
+                          · {t("detail.updatedSuffix", { date: formatDate(folder.updatedAt) })}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -719,95 +753,95 @@ export function FolderDetailDialog() {
                     active={!!folder.favorite}
                     onClick={() => {
                       toggleFolderFavorite(String(folder.id))
-                      toast.success(folder.favorite ? "Unfavorited" : "Favorited")
+                      toast.success(t(folder.favorite ? "action.unfavorite" : "action.favorited"))
                     }}
                     icon={
                       <Star className={`size-3.5 ${folder.favorite ? "fill-yellow-300 text-yellow-300" : ""}`} />
                     }
-                    label={folder.favorite ? "Favorited" : "Favorite"}
+                    label={t(folder.favorite ? "action.favorited" : "action.favorite")}
                   />
                   <ActionPill
                     active={!!folder.pinned}
                     onClick={() => {
                       toggleFolderPin(String(folder.id))
-                      toast.success(folder.pinned ? "Unpinned" : "Pinned")
+                      toast.success(t(folder.pinned ? "action.unpin" : "action.pinned"))
                     }}
                     icon={<Pin className={`size-3.5 ${folder.pinned ? "text-sky-300" : ""}`} />}
-                    label={folder.pinned ? "Pinned" : "Pin"}
+                    label={t(folder.pinned ? "action.pinned" : "action.pin")}
                   />
                   <FolderDecoratorPopover
                     folderId={String(folder.id)}
                     trigger={
                       <button className="h-7 px-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/70 hover:text-white hover:bg-white/[0.08] flex items-center gap-1.5">
                         <Palette className="size-3.5" />
-                        <span className="hidden sm:inline">Decorate</span>
+                        <span className="hidden sm:inline">{t("action.decorate")}</span>
                       </button>
                     }
                   />
                   <ActionPill
                     onClick={() => {
                       const newId = duplicateFolder(String(folder.id))
-                      if (newId) toast.success("Duplicated")
+                      if (newId) toast.success(t("toast.duplicated"))
                     }}
                     icon={<Copy className="size-3.5" />}
-                    label="Duplicate"
+                    label={t("action.duplicate")}
                   />
                   <MoveToPopover
                     excludeIds={moveExcludeIds}
                     allowRoot
                     onSelect={(destId) => {
                       moveFolder(String(folder.id), destId)
-                      toast.success(destId ? "Moved" : "Moved to root")
+                      toast.success(t(destId ? "action.moved" : "action.movedToRoot"))
                     }}
                     trigger={
                       <button className="h-7 px-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/70 hover:text-white hover:bg-white/[0.08] flex items-center gap-1.5">
                         <ArrowRightLeft className="size-3.5" />
-                        <span className="hidden sm:inline">Move</span>
+                        <span className="hidden sm:inline">{t("action.move")}</span>
                       </button>
                     }
                   />
                   <ActionPill
                     onClick={() => setShareDialogOpen(String(folder.id))}
                     icon={<Share2 className="size-3.5" />}
-                    label="Share"
+                    label={t("action.share")}
                   />
                   {(folder.files?.length ?? 0) > 0 && (
                     <ActionPill
                       onClick={() => startSlideshow(String(folder.id))}
                       icon={<Play className="size-3.5" />}
-                      label="Slideshow"
+                      label={t("action.slideshow")}
                     />
                   )}
                   <ActionPill
                     onClick={() => {
                       const description = aiDescribeFolder(folder, subfolders)
                       updateFolderMetadata(String(folder.id), { description })
-                      toast.success("AI description generated")
+                      toast.success(t("toast.aiDescribeDone"))
                     }}
                     icon={<Wand2 className="size-3.5" />}
-                    label="AI describe"
+                    label={t("action.aiDescribe")}
                   />
                   <ActionPill
                     onClick={() => {
                       const cover = aiSuggestCover(folder)
                       if (cover) {
                         setFolderCover(String(folder.id), cover)
-                        toast.success("Cover suggested")
+                        toast.success(t("toast.coverSuggested"))
                       } else {
-                        toast.error("No image files to use")
+                        toast.error(t("toast.noImageFiles"))
                       }
                     }}
                     icon={<Sparkles className="size-3.5" />}
-                    label="Suggest cover"
+                    label={t("action.suggestCover")}
                   />
                   <ActionPill
                     active={!!folder.locked}
                     onClick={() => {
                       setFolderLocked(String(folder.id), !folder.locked)
-                      toast.success(folder.locked ? "Unlocked" : "Locked")
+                      toast.success(t(folder.locked ? "action.unlocked" : "action.locked"))
                     }}
                     icon={folder.locked ? <Lock className="size-3.5" /> : <Unlock className="size-3.5" />}
-                    label={folder.locked ? "Locked" : "Lock"}
+                    label={t(folder.locked ? "action.locked" : "action.lock")}
                   />
                   <button
                     onClick={() => setConfirmDeleteFolder(true)}
@@ -815,7 +849,7 @@ export function FolderDetailDialog() {
                     className="h-7 px-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/70 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10 transition-colors flex items-center gap-1.5 ml-auto disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <Trash2 className="size-3.5" />
-                    <span className="hidden sm:inline">Delete</span>
+                    <span className="hidden sm:inline">{t("action.delete")}</span>
                   </button>
                 </div>
 
@@ -827,7 +861,13 @@ export function FolderDetailDialog() {
 
                 {/* Description */}
                 {folder.description && (
-                  <p className="mt-4 text-[13px] text-white/60 px-3">{folder.description}</p>
+                  <p className="mt-4 text-[13px] text-white/60 px-3">
+                    {(() => {
+                      const seedKey = `seedDesc.${folder.id}` as TranslationKey
+                      const localized = t(seedKey)
+                      return localized && localized !== seedKey ? localized : folder.description
+                    })()}
+                  </p>
                 )}
 
                 {/* Tags */}
@@ -837,7 +877,7 @@ export function FolderDetailDialog() {
                       <input
                         value={tagsDraft}
                         onChange={(e) => setTagsDraft(e.target.value)}
-                        placeholder="comma, separated, tags"
+                        placeholder={t("detail.tagsPlaceholder")}
                         className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-full px-3 py-1.5 text-[12px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20"
                         autoFocus
                         onKeyDown={(e) => {
@@ -865,14 +905,14 @@ export function FolderDetailDialog() {
                     >
                       <Tag className="size-3 text-white/30" />
                       {(folder.tags ?? []).length === 0 ? (
-                        <span className="text-[12px] text-white/30 italic">Add tags...</span>
+                        <span className="text-[12px] text-white/30 italic">{t("folder.addTags")}</span>
                       ) : (
-                        (folder.tags ?? []).map((t) => (
+                        (folder.tags ?? []).map((tag) => (
                           <span
-                            key={t}
+                            key={tag}
                             className="px-2 py-0.5 rounded-full bg-white/[0.06] text-[11px] text-white/70"
                           >
-                            {t}
+                            {localizeTag(tag, t)}
                           </span>
                         ))
                       )}
@@ -883,19 +923,21 @@ export function FolderDetailDialog() {
 
               {/* Tabs */}
               <div className="px-5 sm:px-6 border-t border-white/[0.04] flex items-center gap-0">
-                {(["files", "notes", "activity"] as TabKey[]).map((t) => {
-                  const TabIcon = t === "files" ? Files : t === "notes" ? StickyNote : Activity
-                  const active = tab === t
+                {(["files", "notes", "activity"] as TabKey[]).map((tk) => {
+                  const TabIcon = tk === "files" ? Files : tk === "notes" ? StickyNote : Activity
+                  const active = tab === tk
                   const count =
-                    t === "files"
+                    tk === "files"
                       ? folder.files?.length ?? 0
-                      : t === "activity"
+                      : tk === "activity"
                         ? folder.activity?.length ?? 0
                         : 0
+                  const labelKey: TranslationKey =
+                    tk === "files" ? "detail.tabFiles" : tk === "notes" ? "detail.tabNotes" : "detail.tabActivity"
                   return (
                     <button
-                      key={t}
-                      onClick={() => setTab(t)}
+                      key={tk}
+                      onClick={() => setTab(tk)}
                       className={`px-3 py-2.5 text-[12px] flex items-center gap-1.5 border-b-2 -mb-px transition-colors ${
                         active
                           ? "text-white border-white/80"
@@ -903,9 +945,9 @@ export function FolderDetailDialog() {
                       }`}
                     >
                       <TabIcon className="size-3.5" />
-                      <span className="capitalize">{t}</span>
+                      <span>{t(labelKey)}</span>
                       {count > 0 && (
-                        <span className="text-[10px] text-white/40 font-mono">{count}</span>
+                        <span className="text-[10px] text-white/40 font-mono">{localizeNumber(count, lang)}</span>
                       )}
                     </button>
                   )
@@ -937,7 +979,7 @@ export function FolderDetailDialog() {
                       <input
                         value={innerSearch}
                         onChange={(e) => setInnerSearch(e.target.value)}
-                        placeholder="Search inside this folder..."
+                        placeholder={t("detail.searchPlaceholder")}
                         className="w-full h-8 pl-8 pr-3 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20"
                       />
                     </div>
@@ -947,7 +989,10 @@ export function FolderDetailDialog() {
                         <button className="h-8 px-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/70 hover:text-white hover:bg-white/[0.08] flex items-center gap-1.5">
                           <Filter className="size-3.5" />
                           <span className="hidden md:inline">
-                            {FILE_FILTERS.find((o) => o.value === fileFilter)?.label}
+                            {(() => {
+                              const opt = FILE_FILTERS.find((o) => o.value === fileFilter)
+                              return opt ? t(opt.key) : ""
+                            })()}
                           </span>
                         </button>
                       </DropdownMenuTrigger>
@@ -956,7 +1001,7 @@ export function FolderDetailDialog() {
                         className="bg-[#1a1a1a] border-white/[0.08] text-white min-w-[160px]"
                       >
                         <DropdownMenuLabel className="text-white/50 text-xs uppercase tracking-wide">
-                          File type
+                          {t("group.fileType")}
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator className="bg-white/[0.06]" />
                         <DropdownMenuRadioGroup
@@ -969,7 +1014,7 @@ export function FolderDetailDialog() {
                               value={o.value}
                               className="text-sm text-white/80 focus:bg-white/[0.06] focus:text-white"
                             >
-                              {o.label}
+                              {t(o.key)}
                             </DropdownMenuRadioItem>
                           ))}
                         </DropdownMenuRadioGroup>
@@ -981,7 +1026,10 @@ export function FolderDetailDialog() {
                         <button className="h-8 px-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/70 hover:text-white hover:bg-white/[0.08] flex items-center gap-1.5">
                           <ArrowDownUp className="size-3.5" />
                           <span className="hidden md:inline">
-                            {FILE_SORTS.find((o) => o.value === fileSort)?.label}
+                            {(() => {
+                              const opt = FILE_SORTS.find((o) => o.value === fileSort)
+                              return opt ? t(opt.key) : ""
+                            })()}
                           </span>
                         </button>
                       </DropdownMenuTrigger>
@@ -990,7 +1038,7 @@ export function FolderDetailDialog() {
                         className="bg-[#1a1a1a] border-white/[0.08] text-white min-w-[180px]"
                       >
                         <DropdownMenuLabel className="text-white/50 text-xs uppercase tracking-wide">
-                          Sort
+                          {t("toolbar.sort")}
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator className="bg-white/[0.06]" />
                         <DropdownMenuRadioGroup
@@ -1003,7 +1051,7 @@ export function FolderDetailDialog() {
                               value={o.value}
                               className="text-sm text-white/80 focus:bg-white/[0.06] focus:text-white"
                             >
-                              {o.label}
+                              {t(o.key)}
                             </DropdownMenuRadioItem>
                           ))}
                         </DropdownMenuRadioGroup>
@@ -1016,7 +1064,10 @@ export function FolderDetailDialog() {
                           <button className="h-8 px-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/70 hover:text-white hover:bg-white/[0.08] flex items-center gap-1.5">
                             <Group className="size-3.5" />
                             <span className="hidden lg:inline">
-                              {GROUP_OPTIONS.find((o) => o.value === groupBy)?.label}
+                              {(() => {
+                                const opt = GROUP_OPTIONS.find((o) => o.value === groupBy)
+                                return opt ? t(opt.key) : ""
+                              })()}
                             </span>
                           </button>
                         </DropdownMenuTrigger>
@@ -1025,7 +1076,7 @@ export function FolderDetailDialog() {
                           className="bg-[#1a1a1a] border-white/[0.08] text-white min-w-[160px]"
                         >
                           <DropdownMenuLabel className="text-white/50 text-xs uppercase tracking-wide">
-                            Grouping
+                            {t("group.label")}
                           </DropdownMenuLabel>
                           <DropdownMenuSeparator className="bg-white/[0.06]" />
                           <DropdownMenuRadioGroup
@@ -1038,7 +1089,7 @@ export function FolderDetailDialog() {
                                 value={o.value}
                                 className="text-sm text-white/80 focus:bg-white/[0.06] focus:text-white"
                               >
-                                {o.label}
+                                {t(o.key)}
                               </DropdownMenuRadioItem>
                             ))}
                           </DropdownMenuRadioGroup>
@@ -1052,7 +1103,7 @@ export function FolderDetailDialog() {
                         className={`size-7 flex items-center justify-center rounded-full transition-colors ${
                           viewMode === "grid" ? "bg-white/[0.1] text-white" : "text-white/50 hover:text-white"
                         }`}
-                        title="Grid"
+                        title={t("view.gridLabel")}
                       >
                         <LayoutGrid className="size-3.5" />
                       </button>
@@ -1061,7 +1112,7 @@ export function FolderDetailDialog() {
                         className={`size-7 flex items-center justify-center rounded-full transition-colors ${
                           viewMode === "list" ? "bg-white/[0.1] text-white" : "text-white/50 hover:text-white"
                         }`}
-                        title="List"
+                        title={t("view.listLabel")}
                       >
                         <List className="size-3.5" />
                       </button>
@@ -1070,7 +1121,7 @@ export function FolderDetailDialog() {
                         className={`size-7 flex items-center justify-center rounded-full transition-colors ${
                           viewMode === "calendar" ? "bg-white/[0.1] text-white" : "text-white/50 hover:text-white"
                         }`}
-                        title="Calendar"
+                        title={t("view.calendarLabel")}
                       >
                         <CalendarDays className="size-3.5" />
                       </button>
@@ -1079,7 +1130,7 @@ export function FolderDetailDialog() {
                         className={`size-7 flex items-center justify-center rounded-full transition-colors ${
                           viewMode === "map" ? "bg-white/[0.1] text-white" : "text-white/50 hover:text-white"
                         }`}
-                        title="Map"
+                        title={t("view.mapLabel")}
                       >
                         <MapPin className="size-3.5" />
                       </button>
@@ -1088,13 +1139,13 @@ export function FolderDetailDialog() {
                     <button
                       onClick={() => {
                         const id = createEmptyFolder(String(folder.id))
-                        toast.success("Subfolder created")
+                        toast.success(t("detail.subfolderCreated"))
                         setTimeout(() => navigateToSubfolder(id), 150)
                       }}
                       className="h-8 px-2.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[12px] text-white/70 hover:text-white hover:bg-white/[0.08] flex items-center gap-1.5"
                     >
                       <FolderPlus className="size-3.5" />
-                      <span className="hidden lg:inline">Subfolder</span>
+                      <span className="hidden lg:inline">{t("detail.subfolder")}</span>
                     </button>
                   </div>
 
@@ -1108,19 +1159,19 @@ export function FolderDetailDialog() {
                         className="mx-5 sm:mx-6 mb-3 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.1] flex items-center gap-2 flex-wrap"
                       >
                         <span className="text-[12px] text-white font-medium">
-                          {selected.size} selected
+                          {t("bulk.selected", { n: localizeNumber(selected.size, lang) })}
                         </span>
                         <span className="text-white/30">·</span>
                         <button
                           onClick={() => {
                             const ids = Array.from(selected)
                             for (const id of ids) toggleFileFavorite(String(folder.id), id)
-                            toast.success(`Favorited ${ids.length}`)
+                            toast.success(t("toast.bulkFavorited", { n: localizeNumber(ids.length, lang) }))
                           }}
                           className="h-7 px-2.5 rounded-full text-[12px] text-white/80 hover:text-white hover:bg-white/[0.08] flex items-center gap-1"
                         >
                           <Star className="size-3.5" />
-                          Favorite
+                          {t("bulk.favorite")}
                         </button>
                         <button
                           onClick={() =>
@@ -1132,7 +1183,7 @@ export function FolderDetailDialog() {
                           className="h-7 px-2.5 rounded-full text-[12px] text-white/80 hover:text-white hover:bg-white/[0.08] flex items-center gap-1"
                         >
                           <Edit3 className="size-3.5" />
-                          Rename
+                          {t("bulk.rename")}
                         </button>
                         <button
                           onClick={() =>
@@ -1144,7 +1195,7 @@ export function FolderDetailDialog() {
                           className="h-7 px-2.5 rounded-full text-[12px] text-white/80 hover:text-white hover:bg-white/[0.08] flex items-center gap-1"
                         >
                           <Pencil className="size-3.5" />
-                          Edit
+                          {t("bulk.edit")}
                         </button>
                         {selected.size === 2 && (
                           <button
@@ -1155,7 +1206,7 @@ export function FolderDetailDialog() {
                             className="h-7 px-2.5 rounded-full text-[12px] text-white/80 hover:text-white hover:bg-white/[0.08] flex items-center gap-1"
                           >
                             <GitCompare className="size-3.5" />
-                            Compare
+                            {t("bulk.compare")}
                           </button>
                         )}
                         <MoveToPopover
@@ -1163,32 +1214,32 @@ export function FolderDetailDialog() {
                           onSelect={(destId) => {
                             if (!destId) return
                             bulkMoveFiles(String(folder.id), Array.from(selected), destId)
-                            toast.success(`Moved ${selected.size} files`)
+                            toast.success(t("toast.bulkMoved", { n: localizeNumber(selected.size, lang) }))
                             setSelected(new Set())
                           }}
                           trigger={
                             <button className="h-7 px-2.5 rounded-full text-[12px] text-white/80 hover:text-white hover:bg-white/[0.08] flex items-center gap-1">
                               <ArrowRightLeft className="size-3.5" />
-                              Move
+                              {t("bulk.move")}
                             </button>
                           }
                         />
                         <button
                           onClick={() => {
                             bulkDeleteFiles(String(folder.id), Array.from(selected))
-                            toast.success(`Deleted ${selected.size}`)
+                            toast.success(t("toast.bulkDeleted", { n: localizeNumber(selected.size, lang) }))
                             setSelected(new Set())
                           }}
                           className="h-7 px-2.5 rounded-full text-[12px] text-white/80 hover:text-red-400 hover:bg-red-500/10 flex items-center gap-1"
                         >
                           <Trash2 className="size-3.5" />
-                          Delete
+                          {t("bulk.delete")}
                         </button>
                         <button
                           onClick={() => setSelected(new Set())}
-                          className="h-7 px-2.5 rounded-full text-[12px] text-white/60 hover:text-white hover:bg-white/[0.06] ml-auto"
+                          className="h-7 px-2.5 rounded-full text-[12px] text-white/60 hover:text-white hover:bg-white/[0.06] ms-auto"
                         >
-                          Clear
+                          {t("bulk.clear")}
                         </button>
                       </motion.div>
                     )}
@@ -1198,7 +1249,7 @@ export function FolderDetailDialog() {
                   {filteredSubfolders.length > 0 && (
                     <div className="px-5 sm:px-6 pb-4">
                       <div className="text-[11px] uppercase tracking-wider text-white/40 mb-3">
-                        Subfolders ({filteredSubfolders.length})
+                        {t("detail.subfoldersCount", { count: localizeNumber(filteredSubfolders.length, lang) })}
                       </div>
                       <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1">
                         {filteredSubfolders.map((sub, i) => (
@@ -1210,10 +1261,10 @@ export function FolderDetailDialog() {
                                 onClick={() => navigateToSubfolder(String(sub.id))}
                                 onRemove={() => {
                                   deleteFolder(String(sub.id))
-                                  toast.success("Moved to trash")
+                                  toast.success(t("toast.movedToTrashShort"))
                                 }}
                                 onCancel={() => deleteFolder(String(sub.id))}
-                                onRename={(t) => renameFolder(String(sub.id), t)}
+                                onRename={(newTitle) => renameFolder(String(sub.id), newTitle)}
                               />
                             </div>
                           </SubfolderDropTarget>
@@ -1230,7 +1281,7 @@ export function FolderDetailDialog() {
                   {/* Files */}
                   <div className="px-5 sm:px-6 pb-6">
                     <div className="text-[11px] uppercase tracking-wider text-white/40 mb-3 flex items-center justify-between">
-                      <span>Files ({filteredFiles.length})</span>
+                      <span>{t("detail.filesCount", { count: localizeNumber(filteredFiles.length, lang) })}</span>
                       {filteredFiles.length > 0 && viewMode !== "calendar" && (
                         <button
                           onClick={() => {
@@ -1252,7 +1303,9 @@ export function FolderDetailDialog() {
                           }}
                           className="text-[10px] text-white/40 hover:text-white"
                         >
-                          {filteredFiles.every((f) => selected.has(f.id)) ? "Deselect all" : "Select all"}
+                          {filteredFiles.every((f) => selected.has(f.id))
+                            ? t("folder.deselectAll")
+                            : t("folder.selectAll")}
                         </button>
                       )}
                     </div>
@@ -1265,8 +1318,8 @@ export function FolderDetailDialog() {
                       <div className="rounded-xl border border-dashed border-white/[0.08] py-10 text-center">
                         <p className="text-sm text-white/40">
                           {innerSearch || fileFilter !== "all"
-                            ? "No files match your filters."
-                            : "No files yet — upload some above."}
+                            ? t("detail.noFilesMatch")
+                            : t("detail.noFilesYet")}
                         </p>
                       </div>
                     ) : (
@@ -1276,7 +1329,7 @@ export function FolderDetailDialog() {
                             {groupBy !== "none" && (
                               <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2 flex items-center gap-2">
                                 <span>{group.key}</span>
-                                <span className="text-white/30">{group.items.length}</span>
+                                <span className="text-white/30">{localizeNumber(group.items.length, lang)}</span>
                                 <span className="flex-1 h-px bg-white/[0.04]" />
                               </div>
                             )}
@@ -1309,7 +1362,7 @@ export function FolderDetailDialog() {
                                             toggleFileFavorite(String(folder.id), file.id)
                                           }}
                                           className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-yellow-300 backdrop-blur-sm"
-                                          title="Favorite"
+                                          title={t("action.favorite")}
                                         >
                                           <Star className={`size-3 ${file.favorite ? "fill-yellow-300 text-yellow-300" : ""}`} />
                                         </button>
@@ -1321,12 +1374,12 @@ export function FolderDetailDialog() {
                                                 String(folder.id),
                                                 isCover ? undefined : file.id,
                                               )
-                                              toast.success(isCover ? "Cover cleared" : "Set as cover")
+                                              toast.success(t(isCover ? "detail.coverCleared" : "detail.setAsCover"))
                                             }}
                                             className={`size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-white backdrop-blur-sm ${
                                               isCover ? "ring-1 ring-white" : ""
                                             }`}
-                                            title="Set as cover"
+                                            title={t("detail.setAsCover")}
                                           >
                                             <ImagePlus className="size-3" />
                                           </button>
@@ -1335,12 +1388,12 @@ export function FolderDetailDialog() {
                                           onClick={(e) => {
                                             e.stopPropagation()
                                             togglePinFile(String(folder.id), file.id)
-                                            toast.success(file.pinned ? "Unpinned" : "Pinned to top")
+                                            toast.success(t(file.pinned ? "action.unpin" : "action.pinToTop"))
                                           }}
                                           className={`size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm ${
                                             file.pinned ? "text-sky-300" : "text-white/70 hover:text-sky-200"
                                           }`}
-                                          title="Pin file"
+                                          title={t("action.pinFile")}
                                         >
                                           <Pin className="size-3" />
                                         </button>
@@ -1351,7 +1404,7 @@ export function FolderDetailDialog() {
                                               setImageSearchTarget({ folderId: String(folder.id), fileId: file.id })
                                             }}
                                             className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-white backdrop-blur-sm"
-                                            title="Find similar"
+                                            title={t("action.findSimilar")}
                                           >
                                             <SearchIcon className="size-3" />
                                           </button>
@@ -1364,10 +1417,10 @@ export function FolderDetailDialog() {
                                             if (file.type === "image") {
                                               setFileOcr(String(folder.id), file.id, aiOcrFile(file))
                                             }
-                                            toast.success(`AI tagged with ${tags.length} labels`)
+                                            toast.success(t("toast.aiTaggedN", { n: localizeNumber(tags.length, lang) }))
                                           }}
                                           className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-violet-200 backdrop-blur-sm"
-                                          title="AI tag"
+                                          title={t("action.aiTag")}
                                         >
                                           <Sparkles className="size-3" />
                                         </button>
@@ -1376,13 +1429,13 @@ export function FolderDetailDialog() {
                                           onSelect={(destId) => {
                                             if (!destId) return
                                             moveFile(String(folder.id), file.id, destId)
-                                            toast.success("Moved")
+                                            toast.success(t("action.moved"))
                                           }}
                                           trigger={
                                             <button
                                               onClick={(e) => e.stopPropagation()}
                                               className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-white backdrop-blur-sm"
-                                              title="Move"
+                                              title={t("action.move")}
                                             >
                                               <ArrowRightLeft className="size-3" />
                                             </button>
@@ -1396,7 +1449,7 @@ export function FolderDetailDialog() {
                                             setFileDescDraft(file.description ?? "")
                                           }}
                                           className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-white backdrop-blur-sm"
-                                          title="Edit"
+                                          title={t("action.edit")}
                                         >
                                           <Pencil className="size-3" />
                                         </button>
@@ -1406,7 +1459,7 @@ export function FolderDetailDialog() {
                                             handleDownload(file)
                                           }}
                                           className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-white backdrop-blur-sm"
-                                          title="Download"
+                                          title={t("action.download")}
                                         >
                                           <Download className="size-3" />
                                         </button>
@@ -1414,10 +1467,10 @@ export function FolderDetailDialog() {
                                           onClick={(e) => {
                                             e.stopPropagation()
                                             deleteFile(String(folder.id), file.id)
-                                            toast.success("Removed")
+                                            toast.success(t("toast.fileRemoved"))
                                           }}
                                           className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-red-500/40 text-white/70 hover:text-white backdrop-blur-sm"
-                                          title="Delete"
+                                          title={t("action.delete")}
                                         >
                                           <Trash2 className="size-3" />
                                         </button>
@@ -1440,7 +1493,7 @@ export function FolderDetailDialog() {
                                               })
                                             }
                                             setEditingFileId(null)
-                                            toast.success("File updated")
+                                            toast.success(t("toast.fileUpdated"))
                                           }}
                                         />
                                       )}
@@ -1503,7 +1556,7 @@ export function FolderDetailDialog() {
                                         {formatBytes(file.size)}
                                       </span>
                                       <span className="text-[11px] text-white/40 hidden md:block uppercase">
-                                        {file.type}
+                                        {t(`fileFilter.${file.type}` as TranslationKey)}
                                       </span>
                                       <span className="text-[11px] text-white/40 hidden lg:block">
                                         {formatDate(file.uploadedAt)}
@@ -1537,23 +1590,26 @@ export function FolderDetailDialog() {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
                   >
-                    <h3 className="text-base font-semibold text-white mb-1">Move to trash?</h3>
+                    <h3 className="text-base font-semibold text-white mb-1">{t("confirm.deleteFolder")}</h3>
                     <p className="text-[13px] text-white/50">
-                      "{folder.title}" and {itemCount} item{itemCount === 1 ? "" : "s"} will be moved to the trash.
+                      {t("confirm.deleteFolderDesc", {
+                        title: localizeTitle(folder, t),
+                        count: localizeNumber(itemCount, lang),
+                      })}
                     </p>
                     <div className="flex justify-end gap-2 mt-4">
                       <button
                         onClick={() => setConfirmDeleteFolder(false)}
                         className="px-3 py-1.5 rounded-full text-[13px] text-white/70 hover:text-white hover:bg-white/[0.06]"
                       >
-                        Cancel
+                        {t("action.cancel")}
                       </button>
                       <button
                         onClick={handleDeleteFolder}
                         className="px-3 py-1.5 rounded-full text-[13px] font-medium text-white"
                         style={{ backgroundColor: "oklch(0.5801 0.227 25.12)" }}
                       >
-                        Move to trash
+                        {t("action.moveToTrash")}
                       </button>
                     </div>
                   </motion.div>
@@ -1608,6 +1664,7 @@ function FileInlineEditorOverlay({
   onCancel: () => void
   onSave: () => void
 }) {
+  const { t } = useT()
   return (
     <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
       <div className="w-full bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 space-y-1.5">
@@ -1615,21 +1672,21 @@ function FileInlineEditorOverlay({
           value={nameDraft}
           onChange={(e) => onNameChange(e.target.value)}
           className="w-full bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-white/20"
-          placeholder="File name"
+          placeholder={t("detail.fileNamePlaceholder")}
           autoFocus
         />
         <input
           value={descDraft}
           onChange={(e) => onDescChange(e.target.value)}
           className="w-full bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/80 focus:outline-none focus:border-white/20"
-          placeholder="Description"
+          placeholder={t("detail.descPlaceholder")}
         />
         <div className="flex gap-1 justify-end">
           <button onClick={onCancel} className="px-2 py-0.5 text-[11px] text-white/50 hover:text-white">
-            Cancel
+            {t("action.cancel")}
           </button>
           <button onClick={onSave} className="px-2 py-0.5 text-[11px] font-medium text-black bg-white rounded">
-            Save
+            {t("action.save")}
           </button>
         </div>
       </div>

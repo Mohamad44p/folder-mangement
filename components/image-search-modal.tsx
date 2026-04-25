@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber, localizeTitle } from "@/lib/localize"
 import { aiVisualSimilar } from "@/lib/ai-mocks"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, Sparkles, ExternalLink } from "lucide-react"
@@ -15,6 +17,7 @@ export function ImageSearchModal() {
     openLightbox,
     openFolder,
   } = useFolders()
+  const { t, lang } = useT()
 
   const target = imageSearchTarget
   const file = useMemo(() => {
@@ -58,10 +61,12 @@ export function ImageSearchModal() {
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] text-white font-medium truncate flex items-center gap-2">
                   <Sparkles className="size-3.5 text-violet-300" />
-                  Visually similar to "{file.name}"
+                  {t("imageSearch.similarTo", { name: file.name })}
                 </div>
                 <div className="text-[11px] text-white/40">
-                  {matches.length} match{matches.length === 1 ? "" : "es"} across the library
+                  {matches.length === 1
+                    ? t("imageSearch.subtitleOne")
+                    : t("imageSearch.subtitleN", { n: localizeNumber(matches.length, lang) })}
                 </div>
               </div>
               <button
@@ -74,10 +79,8 @@ export function ImageSearchModal() {
             <div className="flex-1 overflow-y-auto p-3">
               {matches.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-sm text-white/40">No similar files found.</p>
-                  <p className="text-[12px] text-white/30 mt-1">
-                    Try running AI tagging on more files first.
-                  </p>
+                  <p className="text-sm text-white/40">{t("imageSearch.empty2")}</p>
+                  <p className="text-[12px] text-white/30 mt-1">{t("imageSearch.emptyDesc")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -102,7 +105,7 @@ export function ImageSearchModal() {
                             />
                           ) : null}
                           <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[9px] text-violet-200 border border-violet-500/30">
-                            {Math.min(99, m.score)}% match
+                            {t("imageSearch.matchScore", { score: localizeNumber(Math.min(99, m.score), lang) })}
                           </div>
                         </button>
                         <div className="p-2.5">
@@ -115,7 +118,7 @@ export function ImageSearchModal() {
                             className="text-[10px] text-white/40 hover:text-white truncate flex items-center gap-1"
                           >
                             <ExternalLink className="size-2.5" />
-                            {folder.title}
+                            {localizeTitle(folder, t)}
                           </button>
                           <p className="text-[10px] text-white/30 mt-0.5">{m.reason}</p>
                         </div>

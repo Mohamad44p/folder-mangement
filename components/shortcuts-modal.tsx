@@ -1,6 +1,7 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, RotateCcw, Keyboard } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -10,6 +11,7 @@ import { SHORTCUTS, formatKeys } from "@/lib/keyboard-shortcuts"
 export function ShortcutsModal() {
   const { shortcutsModalOpen, setShortcutsModalOpen, customShortcuts, setShortcut, resetShortcuts } =
     useFolders()
+  const { t } = useT()
   const [editing, setEditing] = useState<string | null>(null)
   const [pressed, setPressed] = useState<string>("")
 
@@ -70,16 +72,16 @@ export function ShortcutsModal() {
           >
             <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2">
               <Keyboard className="size-4 text-white/60" />
-              <h3 className="text-[15px] font-semibold text-white">Keyboard shortcuts</h3>
+              <h3 className="text-[15px] font-semibold text-white">{t("shortcuts.title")}</h3>
               <button
                 onClick={() => {
                   resetShortcuts()
-                  toast.success("Shortcuts reset")
+                  toast.success(t("toast.shortcutsReset"))
                 }}
-                className="ml-auto h-7 px-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[11px] text-white/70 hover:text-white border border-white/[0.06] flex items-center gap-1"
+                className="ms-auto h-7 px-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[11px] text-white/70 hover:text-white border border-white/[0.06] flex items-center gap-1"
               >
                 <RotateCcw className="size-3" />
-                Reset
+                {t("shortcuts.reset")}
               </button>
               <button
                 onClick={() => setShortcutsModalOpen(false)}
@@ -89,35 +91,40 @@ export function ShortcutsModal() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-4">
-              {Array.from(new Set(SHORTCUTS.map((s) => s.category))).map((cat) => (
-                <div key={cat}>
-                  <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2 px-2">{cat}</div>
-                  <div className="space-y-0.5">
-                    {SHORTCUTS.filter((s) => s.category === cat).map((s) => {
-                      const keys = customShortcuts[s.id] ?? s.defaultKeys
-                      const isEditing = editing === s.id
-                      return (
-                        <div
-                          key={s.id}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.02]"
-                        >
-                          <span className="text-[12px] text-white/85 flex-1">{s.label}</span>
-                          <button
-                            onClick={() => setEditing(s.id)}
-                            className={`px-2 py-1 rounded-md text-[11px] font-mono border transition-colors ${
-                              isEditing
-                                ? "bg-sky-500/20 border-sky-400/40 text-sky-200 animate-pulse"
-                                : "bg-white/[0.04] border-white/[0.08] text-white/80 hover:bg-white/[0.08]"
-                            }`}
+              {Array.from(new Set(SHORTCUTS.map((s) => s.category))).map((cat) => {
+                const sample = SHORTCUTS.find((s) => s.category === cat)!
+                return (
+                  <div key={cat}>
+                    <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2 px-2">
+                      {t(sample.categoryKey)}
+                    </div>
+                    <div className="space-y-0.5">
+                      {SHORTCUTS.filter((s) => s.category === cat).map((s) => {
+                        const keys = customShortcuts[s.id] ?? s.defaultKeys
+                        const isEditing = editing === s.id
+                        return (
+                          <div
+                            key={s.id}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.02]"
                           >
-                            {isEditing ? "Press keys..." : formatKeys(keys)}
-                          </button>
-                        </div>
-                      )
-                    })}
+                            <span className="text-[12px] text-white/85 flex-1">{t(s.labelKey)}</span>
+                            <button
+                              onClick={() => setEditing(s.id)}
+                              className={`px-2 py-1 rounded-md text-[11px] font-mono border transition-colors ${
+                                isEditing
+                                  ? "bg-sky-500/20 border-sky-400/40 text-sky-200 animate-pulse"
+                                  : "bg-white/[0.04] border-white/[0.08] text-white/80 hover:bg-white/[0.08]"
+                              }`}
+                            >
+                              {isEditing ? t("shortcuts.recordHint") : formatKeys(keys)}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </motion.div>
         </motion.div>

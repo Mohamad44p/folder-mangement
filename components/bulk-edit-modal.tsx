@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber, localizeTag } from "@/lib/localize"
 import { AnimatePresence, motion } from "framer-motion"
 import { X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
@@ -16,6 +18,7 @@ export function BulkEditModal() {
     bulkAddTagsToFiles,
     bulkRemoveTagsFromFiles,
   } = useFolders()
+  const { t, lang } = useT()
 
   const [description, setDescription] = useState("")
   const [touchDescription, setTouchDescription] = useState(false)
@@ -32,7 +35,7 @@ export function BulkEditModal() {
 
   const commonTags = useMemo(() => {
     if (targets.length === 0) return []
-    const sets = targets.map((t) => new Set(t.tags ?? []))
+    const sets = targets.map((tt) => new Set(tt.tags ?? []))
     const first = Array.from(sets[0])
     return first.filter((tag) => sets.every((s) => s.has(tag)))
   }, [targets])
@@ -63,7 +66,7 @@ export function BulkEditModal() {
         favorite: favoriteState === "yes",
       })
     }
-    toast.success(`Updated ${bulkEditOpen.fileIds.length} files`)
+    toast.success(t("bulkEdit.toastUpdated", { n: localizeNumber(bulkEditOpen.fileIds.length, lang) }))
     setBulkEditOpen(null)
   }
 
@@ -90,12 +93,14 @@ export function BulkEditModal() {
           >
             <div className="px-5 py-4 border-b border-white/[0.06] flex items-center">
               <div>
-                <h3 className="text-[15px] font-semibold text-white">Edit {targets.length} files</h3>
-                <p className="text-[12px] text-white/40">Changes apply to all selected files.</p>
+                <h3 className="text-[15px] font-semibold text-white">
+                  {t("bulkEdit.title2", { count: localizeNumber(targets.length, lang) })}
+                </h3>
+                <p className="text-[12px] text-white/40">{t("bulkEdit.subtitle2")}</p>
               </div>
               <button
                 onClick={() => setBulkEditOpen(null)}
-                className="ml-auto size-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
+                className="ms-auto size-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
               >
                 <X className="size-4" />
               </button>
@@ -109,7 +114,7 @@ export function BulkEditModal() {
                     onChange={(e) => setTouchDescription(e.target.checked)}
                     className="accent-white"
                   />
-                  Description
+                  {t("bulkEdit.description")}
                 </label>
                 <textarea
                   value={description}
@@ -118,7 +123,7 @@ export function BulkEditModal() {
                     setTouchDescription(true)
                   }}
                   rows={2}
-                  placeholder="Replace description for all..."
+                  placeholder={t("bulkEdit.descPlaceholderReplace")}
                   disabled={!touchDescription}
                   className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 resize-none disabled:opacity-40"
                 />
@@ -126,15 +131,15 @@ export function BulkEditModal() {
 
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">
-                  Add tags
+                  {t("bulkEdit.tagsAdd")}
                 </div>
-                <TagInput value={tagsToAdd} onChange={setTagsToAdd} placeholder="Tags to add..." />
+                <TagInput value={tagsToAdd} onChange={setTagsToAdd} placeholder={t("bulkEdit.tagsAddPlaceholder")} />
               </div>
 
               {commonTags.length > 0 && (
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">
-                    Remove tags (common to all)
+                    {t("bulkEdit.tagsRemoveCommon")}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {commonTags.map((tag) => {
@@ -144,7 +149,7 @@ export function BulkEditModal() {
                           key={tag}
                           onClick={() =>
                             setTagsToRemove((prev) =>
-                              willRemove ? prev.filter((t) => t !== tag) : [...prev, tag],
+                              willRemove ? prev.filter((tt) => tt !== tag) : [...prev, tag],
                             )
                           }
                           className={`px-2 py-0.5 rounded-full text-[11px] transition-colors border ${
@@ -153,7 +158,7 @@ export function BulkEditModal() {
                               : "bg-white/[0.04] border-white/[0.06] text-white/70"
                           }`}
                         >
-                          {tag}
+                          {localizeTag(tag, t)}
                         </button>
                       )
                     })}
@@ -162,7 +167,7 @@ export function BulkEditModal() {
               )}
 
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">Favorite</div>
+                <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5">{t("bulkEdit.favoriteLabel")}</div>
                 <div className="flex gap-1 p-1 rounded-full bg-white/[0.04] border border-white/[0.06]">
                   {(["keep", "yes", "no"] as const).map((v) => (
                     <button
@@ -172,7 +177,7 @@ export function BulkEditModal() {
                         favoriteState === v ? "bg-white/[0.1] text-white" : "text-white/50 hover:text-white"
                       }`}
                     >
-                      {v === "keep" ? "Keep current" : v === "yes" ? "Mark favorite" : "Unfavorite"}
+                      {v === "keep" ? t("bulkEdit.favKeep") : v === "yes" ? t("bulkEdit.favMark") : t("bulkEdit.favUnmark")}
                     </button>
                   ))}
                 </div>
@@ -183,13 +188,13 @@ export function BulkEditModal() {
                 onClick={() => setBulkEditOpen(null)}
                 className="px-3 py-1.5 rounded-full text-[13px] text-white/70 hover:text-white hover:bg-white/[0.06]"
               >
-                Cancel
+                {t("action.cancel")}
               </button>
               <button
                 onClick={handleApply}
                 className="px-3 py-1.5 rounded-full text-[13px] font-medium text-black bg-white hover:bg-white/90"
               >
-                Apply to {targets.length}
+                {t("bulkEdit.applyN", { count: localizeNumber(targets.length, lang) })}
               </button>
             </div>
           </motion.div>

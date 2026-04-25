@@ -1,6 +1,8 @@
 "use client"
 
 import { useFolders } from "@/contexts/folder-context"
+import { useT } from "@/contexts/i18n-context"
+import { localizeNumber, localizeTitle } from "@/lib/localize"
 import { applyPattern, RENAME_TOKENS } from "@/lib/rename-pattern"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, ArrowRight } from "lucide-react"
@@ -9,6 +11,7 @@ import { toast } from "sonner"
 
 export function BulkRenameModal() {
   const { bulkRenameOpen, setBulkRenameOpen, getFolder, bulkRenameFiles } = useFolders()
+  const { t, lang } = useT()
   const [pattern, setPattern] = useState("{name}-{n2}")
 
   const folder = bulkRenameOpen ? getFolder(bulkRenameOpen.folderId) : undefined
@@ -25,7 +28,7 @@ export function BulkRenameModal() {
   const handleApply = () => {
     if (!bulkRenameOpen) return
     bulkRenameFiles(bulkRenameOpen.folderId, bulkRenameOpen.fileIds, pattern)
-    toast.success(`Renamed ${bulkRenameOpen.fileIds.length} files`)
+    toast.success(t("crossRename.toastDone", { n: localizeNumber(bulkRenameOpen.fileIds.length, lang) }))
     setBulkRenameOpen(null)
   }
 
@@ -52,20 +55,28 @@ export function BulkRenameModal() {
           >
             <div className="px-5 py-4 border-b border-white/[0.06] flex items-center">
               <div>
-                <h3 className="text-[15px] font-semibold text-white">Bulk rename</h3>
+                <h3 className="text-[15px] font-semibold text-white">{t("bulkRename.title")}</h3>
                 <p className="text-[12px] text-white/40">
-                  Renaming {targets.length} file{targets.length === 1 ? "" : "s"} in {folder.title}
+                  {targets.length === 1
+                    ? t("bulkRename.subtitleOne", {
+                        count: localizeNumber(targets.length, lang),
+                        folder: localizeTitle(folder, t),
+                      })
+                    : t("bulkRename.subtitle", {
+                        count: localizeNumber(targets.length, lang),
+                        folder: localizeTitle(folder, t),
+                      })}
                 </p>
               </div>
               <button
                 onClick={() => setBulkRenameOpen(null)}
-                className="ml-auto size-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
+                className="ms-auto size-8 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.08]"
               >
                 <X className="size-4" />
               </button>
             </div>
             <div className="px-5 py-4 border-b border-white/[0.06]">
-              <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">Pattern</label>
+              <label className="text-[10px] uppercase tracking-wider text-white/40 mb-1.5 block">{t("bulkRename.pattern")}</label>
               <input
                 value={pattern}
                 onChange={(e) => setPattern(e.target.value)}
@@ -73,20 +84,20 @@ export function BulkRenameModal() {
                 placeholder="{name}-{n2}"
               />
               <div className="flex flex-wrap gap-1 mt-2">
-                {RENAME_TOKENS.map((t) => (
+                {RENAME_TOKENS.map((tok) => (
                   <button
-                    key={t.token}
-                    onClick={() => setPattern((p) => p + t.token)}
+                    key={tok.token}
+                    onClick={() => setPattern((p) => p + tok.token)}
                     className="px-2 py-0.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] text-white/70 hover:text-white font-mono"
-                    title={t.description}
+                    title={tok.description}
                   >
-                    {t.token}
+                    {tok.token}
                   </button>
                 ))}
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-3">
-              <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Preview</div>
+              <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">{t("bulkRename.preview")}</div>
               <div className="space-y-1">
                 {targets.map((file, i) => {
                   const next = applyPattern(pattern, file, i)
@@ -115,14 +126,14 @@ export function BulkRenameModal() {
                 onClick={() => setBulkRenameOpen(null)}
                 className="px-3 py-1.5 rounded-full text-[13px] text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
               >
-                Cancel
+                {t("action.cancel")}
               </button>
               <button
                 onClick={handleApply}
                 disabled={!pattern.trim()}
                 className="px-3 py-1.5 rounded-full text-[13px] font-medium text-black bg-white hover:bg-white/90 transition-colors disabled:opacity-50"
               >
-                Rename {targets.length}
+                {t("bulkRename.applyN", { count: localizeNumber(targets.length, lang) })}
               </button>
             </div>
           </motion.div>
