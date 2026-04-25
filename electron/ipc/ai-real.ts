@@ -120,6 +120,55 @@ async function callAnthropicVision(
   return json.content?.find((c) => c.type === "text")?.text ?? ""
 }
 
+const OPENROUTER_DEFAULT_VISION_MODEL = "openai/gpt-4o-mini"
+const OPENROUTER_HEADERS_EXTRA = {
+  "HTTP-Referer": "https://github.com/folders-app",
+  "X-Title": "Folders",
+}
+
+async function callOpenRouterVision(
+  apiKey: string,
+  base64: string,
+  mime: string,
+  prompt: string,
+  expectJson: boolean,
+  model: string = OPENROUTER_DEFAULT_VISION_MODEL,
+): Promise<string> {
+  // OpenRouter is OpenAI-compatible. Same body shape, different base URL.
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      ...OPENROUTER_HEADERS_EXTRA,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 400,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            {
+              type: "image_url",
+              image_url: { url: `data:${mime};base64,${base64}` },
+            },
+          ],
+        },
+      ],
+      ...(expectJson ? { response_format: { type: "json_object" } } : {}),
+    }),
+  })
+  if (!res.ok) {
+    throw aiError(`openrouter ${res.status}: ${await res.text().catch(() => "")}`)
+  }
+  const json = (await res.json()) as {
+    choices?: { message?: { content?: string } }[]
+  }
+  return json.choices?.[0]?.message?.content ?? ""
+}
+
 function pickProvider(
   keys: Record<string, string>,
   preferred?: AiProvider,
@@ -127,10 +176,33 @@ function pickProvider(
   if (preferred && keys[preferred]) {
     return { provider: preferred, key: keys[preferred] }
   }
-  for (const p of ["anthropic", "openai", "google"] as const) {
+  // Direct providers first (cheaper, no markup), then OpenRouter as the
+  // catch-all single-key fallback, then google as a placeholder for future
+  // direct integration.
+  for (const p of ["anthropic", "openai", "openrouter", "google"] as const) {
     if (keys[p]) return { provider: p, key: keys[p] }
   }
   throw aiError("No AI provider key configured. Add one in Settings.")
+}
+
+async function dispatchVision(
+  provider: AiProvider,
+  key: string,
+  base64: string,
+  mime: string,
+  prompt: string,
+  expectJson: boolean,
+): Promise<string> {
+  if (provider === "openai") {
+    return callOpenAiVision(key, base64, mime, prompt, expectJson)
+  }
+  if (provider === "anthropic") {
+    return callAnthropicVision(key, base64, mime, prompt)
+  }
+  if (provider === "openrouter") {
+    return callOpenRouterVision(key, base64, mime, prompt, expectJson)
+  }
+  throw aiError(`${provider} not implemented yet`)
 }
 
 function readImageAsBase64(absPath: string, fallbackMime?: string): {
@@ -255,14 +327,7 @@ No prose, no explanations, JSON only.`
 
         let raw = ""
         try {
-          raw =
-            provider === "openai"
-              ? await callOpenAiVision(key, base64, mime, prompt, true)
-              : provider === "anthropic"
-              ? await callAnthropicVision(key, base64, mime, prompt)
-              : (() => {
-                  throw aiError(`${provider} not implemented yet`)
-                })()
+          raw = await dispatchVision(provider, key, base64, mime, prompt, true)
         } catch (err) {
           persistAiTags(db, fileId, [], "failed")
           throw err
@@ -290,14 +355,7 @@ No prose, no explanations, JSON only.`
         const prompt =
           "Write a single short, factual caption for this image (under 20 words). " +
           "Plain text only — no quotes, no labels."
-        const raw =
-          provider === "openai"
-            ? await callOpenAiVision(key, base64, mime, prompt, false)
-            : provider === "anthropic"
-            ? await callAnthropicVision(key, base64, mime, prompt)
-            : (() => {
-                throw aiError(`${provider} not implemented yet`)
-              })()
+        const raw = await dispatchVision(provider, key, base64, mime, prompt, false)
         const caption = raw.trim().replace(/^["']|["']$/g, "")
         db.prepare(
           `UPDATE files SET caption = ?, modified_at = datetime('now') WHERE id = ?`,
@@ -323,14 +381,7 @@ No prose, no explanations, JSON only.`
           "Extract every word of legible text from this image, in reading order. " +
           "Preserve line breaks. Return only the extracted text — no commentary, " +
           "no labels, no quotes. If there is no readable text, respond with an empty string."
-        const raw =
-          provider === "openai"
-            ? await callOpenAiVision(key, base64, mime, prompt, false)
-            : provider === "anthropic"
-            ? await callAnthropicVision(key, base64, mime, prompt)
-            : (() => {
-                throw aiError(`${provider} not implemented yet`)
-              })()
+        const raw = await dispatchVision(provider, key, base64, mime, prompt, false)
         const text = raw.trim()
         db.prepare(
           `UPDATE files SET ocr_text = ?, modified_at = datetime('now') WHERE id = ?`,
@@ -433,6 +484,26 @@ async function callTextOnly(
     if (!res.ok) throw aiError(`anthropic ${res.status}: ${await res.text().catch(() => "")}`)
     const json = (await res.json()) as { content?: { type: string; text?: string }[] }
     return json.content?.find((c) => c.type === "text")?.text ?? ""
+  }
+  if (provider === "openrouter") {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        ...OPENROUTER_HEADERS_EXTRA,
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_DEFAULT_VISION_MODEL,
+        max_tokens: 200,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    })
+    if (!res.ok) {
+      throw aiError(`openrouter ${res.status}: ${await res.text().catch(() => "")}`)
+    }
+    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] }
+    return json.choices?.[0]?.message?.content ?? ""
   }
   throw aiError(`${provider} not implemented yet`)
 }

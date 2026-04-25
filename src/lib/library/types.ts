@@ -70,7 +70,7 @@ export interface SearchHit {
   snippet: string
 }
 
-export type AiProvider = "openai" | "anthropic" | "google"
+export type AiProvider = "openai" | "anthropic" | "google" | "openrouter"
 
 export interface FsChangedPayload {
   kind: "added" | "removed" | "renamed" | "modified"

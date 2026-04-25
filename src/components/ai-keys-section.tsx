@@ -10,7 +10,18 @@ interface ProviderInfo {
   helpUrl: string
 }
 
-const PROVIDERS: ProviderInfo[] = [
+interface ProviderInfoExtended extends ProviderInfo {
+  hint?: string
+}
+
+const PROVIDERS: ProviderInfoExtended[] = [
+  {
+    id: "openrouter",
+    label: "OpenRouter",
+    placeholder: "sk-or-...",
+    helpUrl: "https://openrouter.ai/keys",
+    hint: "One key, all models (OpenAI, Anthropic, Google, Meta, …)",
+  },
   {
     id: "anthropic",
     label: "Anthropic",
@@ -34,6 +45,7 @@ interface KeyState {
 
 export function AiKeysSection() {
   const [state, setState] = useState<Record<AiProvider, KeyState>>({
+    openrouter: { has: false, value: "", showing: false, saving: false },
     anthropic: { has: false, value: "", showing: false, saving: false },
     openai: { has: false, value: "", showing: false, saving: false },
     google: { has: false, value: "", showing: false, saving: false },
@@ -101,9 +113,16 @@ export function AiKeysSection() {
           return (
             <div key={p.id} className="rounded-md border border-white/[0.06] p-2">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[12px] text-white/80">{p.label}</span>
+                <div className="min-w-0">
+                  <span className="text-[12px] text-white/80">{p.label}</span>
+                  {p.hint && (
+                    <p className="text-[10px] text-white/40 leading-tight truncate">
+                      {p.hint}
+                    </p>
+                  )}
+                </div>
                 {s.has ? (
-                  <span className="flex items-center gap-1 text-[10px] text-emerald-400">
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400 shrink-0">
                     <Check className="size-3" /> stored
                   </span>
                 ) : (
@@ -111,7 +130,7 @@ export function AiKeysSection() {
                     href={p.helpUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] text-white/40 hover:text-white/70 underline"
+                    className="text-[10px] text-white/40 hover:text-white/70 underline shrink-0"
                   >
                     get a key
                   </a>
