@@ -33,7 +33,7 @@ The full IPC surface is typed in `src/lib/library/types.ts` and consumed via the
 
 Order is load-bearing — keep it intact:
 
-`SettingsProvider` → `I18nProvider` → `GenerationProvider` → `DndProvider` → `FolderProvider` → `BrowserRouter`
+`SettingsProvider` → `I18nProvider` → `DndProvider` → `FolderProvider` → `BrowserRouter`
 
 `I18nProvider` reads `language` from `SettingsProvider`, lower providers read folder state. Reordering breaks hooks at runtime.
 
@@ -89,18 +89,18 @@ Custom HTML5 DnD — not `react-dnd` or `dnd-kit`. `useDraggable({ kind, ... })`
 
 ### AI (BYOK)
 
-- Provider keys (`anthropic` / `openai`) are stored at `userData/ai-keys.dat` encrypted via `safeStorage`. The `AiKeysSection` component in the settings popover manages them.
-- `electron/ipc/ai-real.ts` implements `ai:auto-tag` and `ai:caption`. Auto-tag prompts the model for ≤8 lowercase tags and persists them into `file_ai_tags` (and updates `ai_tag_status`). Caption persists into the `caption` column.
+- Provider keys (`anthropic` / `openai` / `openrouter`) are stored at `userData/ai-keys.dat` encrypted via `safeStorage`. The `AiKeysSection` component in the settings popover manages them, including the user's preferred-provider choice (persisted under the reserved key `__preferred__`).
+- `electron/ipc/ai-real.ts` implements `ai:auto-tag`, `ai:caption`, `ai:ocr`, `ai:describe-folder`. Auto-tag prompts the model for ≤8 lowercase tags (the cap is enforced in `dedupeTags` after parsing) and persists them into `file_ai_tags` (and updates `ai_tag_status`). Caption persists into the `caption` column.
+- `pickProvider` resolves the active provider in this order: explicit `preferred` arg → `__preferred__` from the keystore → first available in `[anthropic, openai, openrouter]`.
 - `folder-context.tsx` fires `library.ai.autoTag(fileId)` after each image upload; failures are silent (no key configured / network error / model failure).
 
 ### Power search
 
-- `src/components/global-search-palette.tsx` parses the Cmd+K query for syntax tokens: `tag:`, `type:`, `name:`, `before:YYYY-MM-DD`, `after:YYYY-MM-DD`, `size:` with `>`/`<`/`>=`/`<=`/`=` operators and `B`/`KB`/`MB`/`GB` units, plus `fav` / `favorite`. Quoted multi-word values are honoured: `name:"vacation 2026"`.
-- `src/lib/search-syntax.ts` is the standalone reusable parser with the same syntax. The palette currently has its own copy of the parser; consolidate when the search UI is rewritten.
+- `src/components/global-search-palette.tsx` and `src/lib/smart-folder-engine.ts` (and any other consumer) all share the parser at `src/lib/search-syntax.ts`. Tokens: `tag:`, `type:`, `name:`, `before:YYYY-MM-DD`, `after:YYYY-MM-DD`, `size:` with `>`/`<`/`>=`/`<=`/`=` operators and `B`/`KB`/`MB`/`GB` units, plus `fav` / `favorite`. Quoted multi-word values are honoured: `name:"vacation 2026"`. The parser is the single source of truth — if you add a token, update `search-syntax.ts` and let consumers compose with it.
 
 ### Undo
 
-- Destructive actions (currently `deleteFolder`) emit a sonner toast with an Undo action that calls `restoreFolder`. Soft-delete moves the on-disk folder to `.folders-app/trash/<rel>` so the restore is a single rename back.
+- Destructive actions (`deleteFolder`, `deleteFile`) emit a sonner toast with an Undo action that calls the matching `restoreFolder` / `restoreFile`. Soft-delete moves the on-disk entry to `.folders-app/trash/<rel>` so the restore is a single rename back.
 
 ### Path alias
 

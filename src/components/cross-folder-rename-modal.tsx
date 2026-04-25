@@ -8,7 +8,7 @@ import { applyPattern, RENAME_TOKENS } from "@/lib/rename-pattern"
 import type { FolderFile, Project } from "@/lib/data"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, ArrowRight, Globe } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -20,12 +20,15 @@ export function CrossFolderRenameModal() {
   const [type, setType] = useState("")
   const [pattern, setPattern] = useState("{name}-{n3}")
 
-  const matcher = (file: FolderFile, folder: Project) => {
-    if (folder.deletedAt) return false
-    if (tag && !(file.tags ?? []).includes(tag) && !(folder.tags ?? []).includes(tag)) return false
-    if (type && file.type !== type) return false
-    return true
-  }
+  const matcher = useCallback(
+    (file: FolderFile, folder: Project) => {
+      if (folder.deletedAt) return false
+      if (tag && !(file.tags ?? []).includes(tag) && !(folder.tags ?? []).includes(tag)) return false
+      if (type && file.type !== type) return false
+      return true
+    },
+    [tag, type],
+  )
 
   const preview = useMemo(() => {
     const out: { folderTitle: string; before: string; after: string }[] = []
@@ -45,7 +48,7 @@ export function CrossFolderRenameModal() {
       if (out.length >= 12) break
     }
     return { samples: out, total: counter }
-  }, [folders, tag, type, pattern, t])
+  }, [folders, matcher, pattern, t])
 
   const handleApply = () => {
     const renamed = crossFolderRename(matcher, pattern)

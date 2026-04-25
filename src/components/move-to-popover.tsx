@@ -4,7 +4,7 @@ import * as Popover from "@radix-ui/react-popover"
 import { useFolders, type FolderTreeNode } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
 import { localizeTitle } from "@/lib/localize"
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Home } from "lucide-react"
+import { ChevronDown, ChevronRight, Home } from "lucide-react"
 import { useMemo, useState, type ReactNode } from "react"
 
 interface MoveToPopoverProps {

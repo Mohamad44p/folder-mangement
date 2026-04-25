@@ -34,7 +34,6 @@ import { OnboardingTour } from "@/components/onboarding-tour"
 import { FolderContextMenu } from "@/components/folder-context-menu"
 import { LibraryPicker } from "@/components/library-picker"
 import { VirtualFolderGrid } from "@/components/virtual-folder-grid"
-import { library } from "@/lib/library"
 import { toast } from "sonner"
 import type { Project } from "@/lib/data"
 

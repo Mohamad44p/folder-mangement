@@ -24,7 +24,7 @@ export function ExportModal() {
       const descendants = folders.filter((f) => descIds.includes(String(f.id)))
       await exportFolderAsZip(folder, descendants)
       toast.success(t("ie.zipDownloaded"))
-    } catch (e) {
+    } catch {
       toast.error(t("ie.zipFailed"))
     } finally {
       setExporting(false)
@@ -132,7 +132,7 @@ export function ImportModal() {
         return
       }
       setParsed(data)
-    } catch (e) {
+    } catch {
       setError(t("ie.errParse"))
     }
   }

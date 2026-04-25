@@ -37,6 +37,12 @@ export function registerFilesIpc(svc: FilesService, db: Database.Database): void
     ),
   )
   ipcMain.handle(
+    "files:restore",
+    wrapIpc<FileRecord, [string, string]>(async (_e, fid, fileId) =>
+      svc.restore(fid, fileId),
+    ),
+  )
+  ipcMain.handle(
     "files:bulk-delete",
     wrapIpc<void, [string, string[]]>(async (_e, fid, ids) =>
       svc.bulkDelete(fid, ids),

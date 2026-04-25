@@ -4,12 +4,12 @@ import * as ContextMenu from "@radix-ui/react-context-menu"
 import { useFolders } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
 import {
-  Star, Pin, Pencil, Copy, ArrowRightLeft, Share2, Trash2, Lock, Unlock, Archive,
-  Sparkles, Workflow, Eye, Plus,
+  Star, Pin, Copy, Share2, Trash2, Lock, Unlock, Archive,
+  Sparkles, Eye, Plus,
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { toast } from "sonner"
-import { aiSuggestCover } from "@/lib/ai-mocks"
+import { aiSuggestCover } from "@/lib/ai-helpers"
 import { library } from "@/lib/library"
 
 export function FolderContextMenu({
@@ -28,7 +28,6 @@ export function FolderContextMenu({
     archiveFolder,
     setShareDialogOpen,
     deleteFolder,
-    setBulkRenameOpen,
     setFolderCover,
     setFileAiTags,
     openFolder,

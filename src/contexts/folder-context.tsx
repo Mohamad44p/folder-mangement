@@ -19,13 +19,13 @@ import {
   type ChecklistItem,
   type FileAnnotation,
   type FileComment,
-  type FileReaction,
   type FolderFile,
   type Project,
   type SavedSearch,
   type ShareInfo,
   type SharePermission,
   type SmartFolder,
+  type SmartFolderRule,
   type Workspace,
   type WorkflowStatus,
 } from "@/lib/data"
@@ -46,6 +46,12 @@ import { toast } from "sonner"
 
 function isElectronEnv(): boolean {
   return typeof window !== "undefined" && !!window.api?.library
+}
+
+function persistErr(label: string) {
+  return (err: unknown) => {
+    console.error(`[folder-context] ${label} failed:`, err)
+  }
 }
 
 function genUuid(): string {
@@ -164,6 +170,7 @@ interface FolderContextType {
 
   uploadFiles: (folderId: string, files: FileList | File[]) => Promise<void>
   deleteFile: (folderId: string, fileId: string) => void
+  restoreFile: (folderId: string, file: FolderFile) => void
   renameFile: (folderId: string, fileId: string, name: string) => void
   updateFileMetadata: (folderId: string, fileId: string, patch: Partial<FolderFile>) => void
   toggleFileFavorite: (folderId: string, fileId: string) => void
@@ -431,8 +438,6 @@ export function FolderProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = loadFolders()
     if (stored && stored.length > 0) {
-      // Force-clear any leftover isGenerating flags from previous prototype
-      // runs so the fake "Setting up ~9s" animation never replays.
       setFolders(
         stored.map((p) => ({ ...p, isGenerating: false, progress: undefined })) as FolderWithMeta[],
       )
@@ -482,10 +487,146 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     setHydrated(true)
   }, [])
 
+  // ===== Hydrate savedSearches + smartFolders from SQLite =====
+  // Replaces the localStorage shadow with the authoritative library copy
+  // once the IPC bridge becomes available.
+  useEffect(() => {
+    if (!isElectronEnv()) return
+    void (async () => {
+      try {
+        const [searches, smarts] = await Promise.all([
+          library.savedSearches.list(),
+          library.smartFolders.list(),
+        ])
+        if (searches.length > 0) {
+          setSavedSearches(
+            searches.map((s) => ({ id: s.id, name: s.name, query: s.query })),
+          )
+        }
+        if (smarts.length > 0) {
+          const parsed: SmartFolder[] = smarts.map((sf) => {
+            let icon = "📁"
+            let matchAll = false
+            let rules: SmartFolderRule[] = []
+            try {
+              const raw = JSON.parse(sf.rulesJson) as {
+                icon?: string
+                matchAll?: boolean
+                rules?: SmartFolderRule[]
+              }
+              if (typeof raw.icon === "string") icon = raw.icon
+              if (typeof raw.matchAll === "boolean") matchAll = raw.matchAll
+              if (Array.isArray(raw.rules)) rules = raw.rules
+            } catch {
+              /* fall back to defaults if rules_json is corrupt */
+            }
+            return { id: sf.id, name: sf.name, icon, matchAll, rules }
+          })
+          setSmartFolders(parsed)
+        }
+      } catch (err) {
+        console.error("Failed to load savedSearches/smartFolders:", err)
+      }
+    })()
+  }, [])
+
+  // ===== Lazy-load file extras (comments / annotations / reactions / palette)
+  // when the lightbox opens a file. =====
+  useEffect(() => {
+    if (!lightbox || !isElectronEnv()) return
+    const { folderId, fileId } = lightbox
+    void (async () => {
+      try {
+        const [comments, annotations, reactions, palette] = await Promise.all([
+          library.comments.list(fileId),
+          library.annotations.list(fileId),
+          library.reactions.list(fileId),
+          library.palette.get(fileId),
+        ])
+        setFolders((prev) =>
+          prev.map((f) => {
+            if (String(f.id) !== folderId) return f
+            return {
+              ...f,
+              files: (f.files ?? []).map((file) => {
+                if (file.id !== fileId) return file
+                return {
+                  ...file,
+                  comments: comments.map((c) => ({
+                    id: c.id,
+                    author: c.author ?? "You",
+                    text: c.text,
+                    timestamp: c.timestamp,
+                    parentId: c.parentId ?? undefined,
+                    resolved: c.resolved,
+                  })),
+                  annotations: annotations.map((a) => ({
+                    id: a.id,
+                    kind: (a.kind === "highlight" ? "rect" : a.kind) as FileAnnotation["kind"],
+                    x: a.x ?? 0,
+                    y: a.y ?? 0,
+                    w: a.w,
+                    h: a.h,
+                    x2: a.x2,
+                    y2: a.y2,
+                    color: a.color ?? "#fff",
+                    text: a.text,
+                    createdAt: a.createdAt,
+                  })),
+                  reactions: reactions.map((r) => ({ emoji: r.emoji, by: r.by })),
+                  palette: palette.length > 0 ? palette : file.palette,
+                }
+              }),
+            }
+          }),
+        )
+      } catch (err) {
+        console.error("Failed to load file extras:", err)
+      }
+    })()
+  }, [lightbox])
+
+  // ===== Lazy-load folder extras (activity / checklist / customFields)
+  // when a folder is opened in the detail dialog. =====
+  useEffect(() => {
+    if (!openFolderId || !isElectronEnv()) return
+    const folderId = openFolderId
+    void (async () => {
+      try {
+        const [activity, checklist, fields] = await Promise.all([
+          library.activity.list(folderId, 50),
+          library.checklist.list(folderId),
+          library.folderFields.list(folderId),
+        ])
+        setFolders((prev) =>
+          prev.map((f) => {
+            if (String(f.id) !== folderId) return f
+            const customFields: Record<string, string> = {}
+            for (const cf of fields) customFields[cf.key] = cf.value
+            return {
+              ...f,
+              activity: activity.map((a) => ({
+                id: a.id,
+                timestamp: a.timestamp,
+                kind: a.kind as ActivityKind,
+                actor: a.actor ?? "You",
+                description: a.description ?? "",
+              })),
+              checklist: checklist.map((c) => ({ id: c.id, text: c.text, done: c.done })),
+              customFields,
+            }
+          }),
+        )
+      } catch (err) {
+        console.error("Failed to load folder extras:", err)
+      }
+    })()
+  }, [openFolderId])
+
   // Persist folders
   useEffect(() => {
     if (!hydrated) return
-    const stripped = folders.map(({ isNew, isVisible, ...rest }) => rest)
+    const stripped = folders.map(({ isNew: _isNew, isVisible: _isVisible, ...rest }) => rest)
     saveFolders(stripped)
   }, [folders, hydrated])
 
@@ -579,6 +720,11 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...f, activity: next }
       }),
     )
+    if (isElectronEnv()) {
+      void library.activity
+        .add({ folderId, kind, description, actor: "You" })
+        .catch(persistErr("appendActivity"))
+    }
   }, [])
 
   const createFolder = useCallback((init: Partial<Project> = {}) => {
@@ -1072,26 +1218,79 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  const deleteFile = useCallback((folderId: string, fileId: string) => {
+  const deleteFile = useCallback(
+    (folderId: string, fileId: string) => {
+      let captured: FolderFile | null = null
+      let displayName = "File"
+      setFolders((prev) =>
+        prev.map((f) => {
+          if (String(f.id) !== folderId) return f
+          const target = (f.files ?? []).find((file) => file.id === fileId)
+          if (target) {
+            captured = target
+            displayName = target.name
+          }
+          const next = (f.files ?? []).filter((file) => file.id !== fileId)
+          const log = target
+            ? [makeActivity("deleted", `File "${target.name}" removed`), ...(f.activity ?? [])].slice(0, 50)
+            : f.activity
+          return {
+            ...f,
+            files: next,
+            images: previewImagesFromFiles(next, []),
+            isEmpty: next.length === 0,
+            coverFileId: f.coverFileId === fileId ? undefined : f.coverFileId,
+            activity: log,
+            updatedAt: new Date().toISOString(),
+          }
+        }),
+      )
+      if (isElectronEnv()) {
+        void library.files
+          .delete(folderId, fileId)
+          .catch(persistErr("library.files.delete"))
+      }
+      toast(`"${displayName}" moved to trash`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            if (captured) restoreFile(folderId, captured)
+          },
+        },
+        duration: 6000,
+      })
+    },
+    // restoreFile is defined just below — referenced via closure that
+    // captures the latest definition at call-time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
+  const restoreFile = useCallback((folderId: string, file: FolderFile) => {
     setFolders((prev) =>
       prev.map((f) => {
         if (String(f.id) !== folderId) return f
-        const target = (f.files ?? []).find((file) => file.id === fileId)
-        const next = (f.files ?? []).filter((file) => file.id !== fileId)
-        const log = target
-          ? [makeActivity("deleted", `File "${target.name}" removed`), ...(f.activity ?? [])].slice(0, 50)
-          : f.activity
+        if ((f.files ?? []).some((x) => x.id === file.id)) return f
+        const merged = [...(f.files ?? []), file]
+        const log = [
+          makeActivity("restored", `File "${file.name}" restored from trash`),
+          ...(f.activity ?? []),
+        ].slice(0, 50)
         return {
           ...f,
-          files: next,
-          images: previewImagesFromFiles(next, []),
-          isEmpty: next.length === 0,
-          coverFileId: f.coverFileId === fileId ? undefined : f.coverFileId,
+          files: merged,
+          images: previewImagesFromFiles(merged, f.images),
+          isEmpty: false,
           activity: log,
           updatedAt: new Date().toISOString(),
         }
       }),
     )
+    if (isElectronEnv()) {
+      void library.files
+        .restore(folderId, file.id)
+        .catch(persistErr("library.files.restore"))
+    }
   }, [])
 
   const renameFile = useCallback((folderId: string, fileId: string, name: string) => {
@@ -1671,30 +1870,75 @@ export function FolderProvider({ children }: { children: ReactNode }) {
 
   // Smart folders
   const addSmartFolder = useCallback((s: Omit<SmartFolder, "id">) => {
-    const id = genId("smart")
-    setSmartFolders((prev) => [{ ...s, id }, ...prev])
-    return id
+    const tempId = genId("smart")
+    const local: SmartFolder = { ...s, id: tempId }
+    setSmartFolders((prev) => [local, ...prev])
+    if (isElectronEnv()) {
+      const rulesJson = JSON.stringify({ matchAll: s.matchAll, rules: s.rules, icon: s.icon })
+      void library.smartFolders
+        .add({ name: s.name, rulesJson })
+        .then((real) => {
+          setSmartFolders((prev) =>
+            prev.map((sf) => (sf.id === tempId ? { ...sf, id: real.id } : sf)),
+          )
+        })
+        .catch(persistErr("addSmartFolder"))
+    }
+    return tempId
   }, [])
 
   const updateSmartFolder = useCallback((id: string, patch: Partial<SmartFolder>) => {
-    setSmartFolders((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
+    let merged: SmartFolder | undefined
+    setSmartFolders((prev) =>
+      prev.map((s) => {
+        if (s.id !== id) return s
+        merged = { ...s, ...patch }
+        return merged
+      }),
+    )
+    if (isElectronEnv() && merged) {
+      const rulesJson = JSON.stringify({
+        matchAll: merged.matchAll,
+        rules: merged.rules,
+        icon: merged.icon,
+      })
+      void library.smartFolders
+        .update({ id, name: merged.name, rulesJson })
+        .catch(persistErr("updateSmartFolder"))
+    }
   }, [])
 
   const deleteSmartFolder = useCallback((id: string) => {
     setSmartFolders((prev) => prev.filter((s) => s.id !== id))
+    if (isElectronEnv()) {
+      void library.smartFolders.delete(id).catch(persistErr("deleteSmartFolder"))
+    }
   }, [])
 
   const openSmartFolder = useCallback((id: string | null) => setOpenSmartFolderId(id), [])
 
   // Saved searches
   const addSavedSearch = useCallback((name: string, query: string) => {
-    const id = genId("ss")
-    setSavedSearches((prev) => [{ id, name, query }, ...prev])
-    return id
+    const tempId = genId("ss")
+    setSavedSearches((prev) => [{ id: tempId, name, query }, ...prev])
+    if (isElectronEnv()) {
+      void library.savedSearches
+        .add(name, query)
+        .then((real) => {
+          setSavedSearches((prev) =>
+            prev.map((s) => (s.id === tempId ? { id: real.id, name: real.name, query: real.query } : s)),
+          )
+        })
+        .catch(persistErr("addSavedSearch"))
+    }
+    return tempId
   }, [])
 
   const deleteSavedSearch = useCallback((id: string) => {
     setSavedSearches((prev) => prev.filter((s) => s.id !== id))
+    if (isElectronEnv()) {
+      void library.savedSearches.delete(id).catch(persistErr("deleteSavedSearch"))
+    }
   }, [])
 
   // ===== Workflows =====
@@ -1756,6 +2000,9 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...f, customFields: fields, updatedAt: new Date().toISOString() }
       }),
     )
+    if (isElectronEnv()) {
+      void library.folderFields.set(id, key, value).catch(persistErr("setCustomField"))
+    }
   }, [])
 
   const removeCustomField = useCallback((id: string, key: string) => {
@@ -1767,17 +2014,43 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...f, customFields: fields, updatedAt: new Date().toISOString() }
       }),
     )
+    if (isElectronEnv()) {
+      void library.folderFields.remove(id, key).catch(persistErr("removeCustomField"))
+    }
   }, [])
 
   const addChecklistItem = useCallback((id: string, text: string) => {
+    const tempId = genId("chk")
+    const item: ChecklistItem = { id: tempId, text, done: false }
     setFolders((prev) =>
       prev.map((f) => {
         if (String(f.id) !== id) return f
-        const item: ChecklistItem = { id: genId("chk"), text, done: false }
         const next = [...(f.checklist ?? []), item]
         return { ...f, checklist: next, updatedAt: new Date().toISOString() }
       }),
     )
+    if (isElectronEnv()) {
+      void library.checklist
+        .add(id, text)
+        .then((real) => {
+          // Swap the temp id for the persisted id so future toggles/removes
+          // address the real DB row.
+          setFolders((prev) =>
+            prev.map((f) => {
+              if (String(f.id) !== id) return f
+              return {
+                ...f,
+                checklist: (f.checklist ?? []).map((it) =>
+                  it.id === tempId
+                    ? { id: real.id, text: real.text, done: real.done }
+                    : it,
+                ),
+              }
+            }),
+          )
+        })
+        .catch(persistErr("addChecklistItem"))
+    }
   }, [])
 
   const toggleChecklistItem = useCallback((id: string, itemId: string) => {
@@ -1790,6 +2063,9 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...f, checklist: next, updatedAt: new Date().toISOString() }
       }),
     )
+    if (isElectronEnv()) {
+      void library.checklist.toggle(itemId).catch(persistErr("toggleChecklistItem"))
+    }
   }, [])
 
   const removeChecklistItem = useCallback((id: string, itemId: string) => {
@@ -1800,6 +2076,9 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...f, checklist: next, updatedAt: new Date().toISOString() }
       }),
     )
+    if (isElectronEnv()) {
+      void library.checklist.remove(itemId).catch(persistErr("removeChecklistItem"))
+    }
   }, [])
 
   const markFolderViewed = useCallback((id: string) => {
@@ -1848,38 +2127,126 @@ export function FolderProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setFileAnnotations = useCallback((folderId: string, fileId: string, ann: FileAnnotation[]) => {
+    let prevAnn: FileAnnotation[] = []
     setFolders((prev) =>
       prev.map((f) => {
         if (String(f.id) !== folderId) return f
-        const next = (f.files ?? []).map((file) =>
-          file.id === fileId ? { ...file, annotations: ann } : file,
+        const file = (f.files ?? []).find((x) => x.id === fileId)
+        prevAnn = file?.annotations ?? []
+        const next = (f.files ?? []).map((x) =>
+          x.id === fileId ? { ...x, annotations: ann } : x,
         )
         const log = [makeActivity("annotated", "Annotations updated"), ...(f.activity ?? [])].slice(0, 50)
         return { ...f, files: next, activity: log, updatedAt: new Date().toISOString() }
       }),
     )
+    if (isElectronEnv()) {
+      const prevIds = new Set(prevAnn.map((a) => a.id))
+      const nextIds = new Set(ann.map((a) => a.id))
+      // Delete annotations that were removed.
+      for (const a of prevAnn) {
+        if (!nextIds.has(a.id)) {
+          void library.annotations.delete(a.id).catch(persistErr("delete annotation"))
+        }
+      }
+      // Persist newly-added annotations and swap the local id for the server one
+      // so subsequent deletes address the right row.
+      for (const a of ann) {
+        if (prevIds.has(a.id)) continue
+        const localId = a.id
+        const kind = a.kind === "circle" ? "rect" : a.kind
+        void library.annotations
+          .add({
+            fileId,
+            kind: kind as "rect" | "arrow" | "text" | "highlight",
+            x: a.x,
+            y: a.y,
+            w: a.w,
+            h: a.h,
+            x2: a.x2,
+            y2: a.y2,
+            color: a.color,
+            text: a.text,
+          })
+          .then((real) => {
+            setFolders((prev) =>
+              prev.map((f) => {
+                if (String(f.id) !== folderId) return f
+                return {
+                  ...f,
+                  files: (f.files ?? []).map((x) => {
+                    if (x.id !== fileId) return x
+                    return {
+                      ...x,
+                      annotations: (x.annotations ?? []).map((cur) =>
+                        cur.id === localId ? { ...cur, id: real.id } : cur,
+                      ),
+                    }
+                  }),
+                }
+              }),
+            )
+          })
+          .catch(persistErr("add annotation"))
+      }
+    }
   }, [])
 
   const addFileComment = useCallback(
     (folderId: string, fileId: string, text: string, author = "You", parentId?: string) => {
+      const tempId = genId("c")
+      const newComment: FileComment = {
+        id: tempId,
+        author,
+        text,
+        timestamp: new Date().toISOString(),
+        parentId,
+      }
       setFolders((prev) =>
         prev.map((f) => {
           if (String(f.id) !== folderId) return f
-          const next = (f.files ?? []).map((file) => {
-            if (file.id !== fileId) return file
-            const newComment: FileComment = {
-              id: genId("c"),
-              author,
-              text,
-              timestamp: new Date().toISOString(),
-              parentId,
-            }
-            return { ...file, comments: [...(file.comments ?? []), newComment] }
-          })
+          const next = (f.files ?? []).map((file) =>
+            file.id === fileId
+              ? { ...file, comments: [...(file.comments ?? []), newComment] }
+              : file,
+          )
           const log = [makeActivity("commented", "New comment"), ...(f.activity ?? [])].slice(0, 50)
           return { ...f, files: next, activity: log, updatedAt: new Date().toISOString() }
         }),
       )
+      if (isElectronEnv()) {
+        void library.comments
+          .add({ fileId, text, author, parentId: parentId ?? null })
+          .then((real) => {
+            setFolders((prev) =>
+              prev.map((f) => {
+                if (String(f.id) !== folderId) return f
+                return {
+                  ...f,
+                  files: (f.files ?? []).map((file) => {
+                    if (file.id !== fileId) return file
+                    return {
+                      ...file,
+                      comments: (file.comments ?? []).map((c) =>
+                        c.id === tempId
+                          ? {
+                              id: real.id,
+                              author: real.author ?? author,
+                              text: real.text,
+                              timestamp: real.timestamp,
+                              parentId: real.parentId ?? undefined,
+                              resolved: real.resolved,
+                            }
+                          : c,
+                      ),
+                    }
+                  }),
+                }
+              }),
+            )
+          })
+          .catch(persistErr("addFileComment"))
+      }
     },
     [],
   )
@@ -1895,6 +2262,9 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...f, files: next, updatedAt: new Date().toISOString() }
       }),
     )
+    if (isElectronEnv()) {
+      void library.comments.delete(commentId).catch(persistErr("removeFileComment"))
+    }
   }, [])
 
   const toggleFileReaction = useCallback(
@@ -1914,6 +2284,11 @@ export function FolderProvider({ children }: { children: ReactNode }) {
           return { ...f, files: next, updatedAt: new Date().toISOString() }
         }),
       )
+      if (isElectronEnv()) {
+        void library.reactions
+          .toggle({ fileId, emoji, by })
+          .catch(persistErr("toggleFileReaction"))
+      }
     },
     [],
   )
@@ -1943,6 +2318,9 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...f, files: next }
       }),
     )
+    if (isElectronEnv()) {
+      void library.palette.set(fileId, palette).catch(persistErr("setFilePalette"))
+    }
   }, [])
 
   const setFileDimensions = useCallback(
@@ -2191,6 +2569,7 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     unshareFolder,
     uploadFiles,
     deleteFile,
+    restoreFile,
     renameFile,
     updateFileMetadata,
     toggleFileFavorite,

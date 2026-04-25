@@ -13,7 +13,6 @@ export function ShortcutsModal() {
     useFolders()
   const { t } = useT()
   const [editing, setEditing] = useState<string | null>(null)
-  const [pressed, setPressed] = useState<string>("")
 
   useEffect(() => {
     if (!editing) return
@@ -39,10 +38,8 @@ export function ShortcutsModal() {
       parts.push(key)
       const combo = parts.join("+")
       setShortcut(editing, combo)
-      setPressed(combo)
       setTimeout(() => {
         setEditing(null)
-        setPressed("")
       }, 400)
     }
     window.addEventListener("keydown", handler)

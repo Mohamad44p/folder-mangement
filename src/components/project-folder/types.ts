@@ -4,7 +4,6 @@ import type { Project } from "@/lib/data"
 export interface ProjectFolderProps {
   project: Project
   index: number
-  generationDuration?: number
 }
 
 export interface ImagePosition {

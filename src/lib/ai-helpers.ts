@@ -1,20 +1,8 @@
 /**
- * Synchronous helpers around AI-derived data. The actual model calls live in
- * the main process (electron/ipc/ai-real.ts) and are invoked via
- * window.api.ai.autoTag / .ocr / .caption / .describeFolder. These helpers
- * either:
- *   - read previously-persisted results off the file/folder records, or
- *   - compute a useful answer locally from the actual file/folder properties
- *     (no AI required, no fakery).
- *
- * Existing call sites that need fresh AI output should call the async
- * `window.api.ai.*` methods directly (see `library.ai.*` in
- * `src/lib/library/index.ts`). The helpers here exist so that purely-sync UI
- * code (right-click menus, optimistic renders) can show whatever real data is
- * already on the record without round-tripping through IPC.
- *
- * The filename is kept as `ai-mocks.ts` for import compatibility — there are
- * no mocks left.
+ * Synchronous helpers around AI-derived data. Real model calls live in the
+ * main process (electron/ipc/ai-real.ts) and are invoked via library.ai.*.
+ * These helpers either read previously-persisted results off the file/folder
+ * records or compute a useful answer locally from real file properties.
  */
 
 import type { FolderFile, Project } from "./data"

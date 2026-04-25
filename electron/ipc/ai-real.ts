@@ -7,6 +7,10 @@ import { wrapIpc } from "./envelope"
 import type { AiProvider } from "../../src/lib/library/types"
 
 const KEYS_FILE = "ai-keys.dat"
+// Mirrors the constant in ./ai.ts — the reserved keystore slot for the
+// user's persisted provider preference.
+const PREFERRED_KEY = "__preferred__"
+const VALID_PROVIDERS: readonly AiProvider[] = ["anthropic", "openai", "openrouter"]
 
 interface AiTag {
   tag: string
@@ -176,10 +180,18 @@ function pickProvider(
   if (preferred && keys[preferred]) {
     return { provider: preferred, key: keys[preferred] }
   }
+  // Persisted user preference takes precedence over the default ordering.
+  const persisted = keys[PREFERRED_KEY]
+  if (
+    typeof persisted === "string" &&
+    VALID_PROVIDERS.includes(persisted as AiProvider) &&
+    keys[persisted]
+  ) {
+    return { provider: persisted as AiProvider, key: keys[persisted] }
+  }
   // Direct providers first (cheaper, no markup), then OpenRouter as the
-  // catch-all single-key fallback, then google as a placeholder for future
-  // direct integration.
-  for (const p of ["anthropic", "openai", "openrouter", "google"] as const) {
+  // catch-all single-key fallback.
+  for (const p of ["anthropic", "openai", "openrouter"] as const) {
     if (keys[p]) return { provider: p, key: keys[p] }
   }
   throw aiError("No AI provider key configured. Add one in Settings.")
@@ -202,7 +214,7 @@ async function dispatchVision(
   if (provider === "openrouter") {
     return callOpenRouterVision(key, base64, mime, prompt, expectJson)
   }
-  throw aiError(`${provider} not implemented yet`)
+  throw aiError(`unknown provider: ${provider as string}`)
 }
 
 function readImageAsBase64(absPath: string, fallbackMime?: string): {
@@ -261,8 +273,10 @@ function parseTagsResponse(raw: string): AiTag[] {
     .split(/[,\n]/)
     .map((s) => s.trim().replace(/^[-•*\d.\s]+/, "").toLowerCase())
     .filter((s) => s.length > 0 && s.length < 30)
-  return dedupeTags(split.slice(0, 8).map((tag) => ({ tag, confidence: 0.7 })))
+  return dedupeTags(split.slice(0, MAX_AI_TAGS).map((tag) => ({ tag, confidence: 0.7 })))
 }
+
+const MAX_AI_TAGS = 8
 
 function dedupeTags(tags: AiTag[]): AiTag[] {
   const seen = new Set<string>()
@@ -273,7 +287,7 @@ function dedupeTags(tags: AiTag[]): AiTag[] {
       out.push(t)
     }
   }
-  return out.slice(0, 12)
+  return out.slice(0, MAX_AI_TAGS)
 }
 
 function clamp(v: number): number {
@@ -505,7 +519,7 @@ async function callTextOnly(
     const json = (await res.json()) as { choices?: { message?: { content?: string } }[] }
     return json.choices?.[0]?.message?.content ?? ""
   }
-  throw aiError(`${provider} not implemented yet`)
+  throw aiError(`unknown provider: ${provider as string}`)
 }
 
 function countBy<T>(items: T[], key: (item: T) => string): Record<string, number> {

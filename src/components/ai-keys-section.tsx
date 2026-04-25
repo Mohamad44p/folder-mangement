@@ -36,6 +36,15 @@ const PROVIDERS: ProviderInfoExtended[] = [
   },
 ]
 
+type PreferredOption = "auto" | AiProvider
+
+const PREFERRED_OPTIONS: { id: PreferredOption; label: string }[] = [
+  { id: "auto", label: "Auto" },
+  { id: "anthropic", label: "Anthropic" },
+  { id: "openai", label: "OpenAI" },
+  { id: "openrouter", label: "OpenRouter" },
+]
+
 interface KeyState {
   has: boolean
   value: string
@@ -48,8 +57,8 @@ export function AiKeysSection() {
     openrouter: { has: false, value: "", showing: false, saving: false },
     anthropic: { has: false, value: "", showing: false, saving: false },
     openai: { has: false, value: "", showing: false, saving: false },
-    google: { has: false, value: "", showing: false, saving: false },
   })
+  const [preferred, setPreferred] = useState<PreferredOption>("auto")
 
   useEffect(() => {
     let cancelled = false
@@ -63,6 +72,9 @@ export function AiKeysSection() {
             [p.id]: { ...prev[p.id], has: status.has },
           }))
         }
+        const current = await library.ai.getPreferredProvider()
+        if (cancelled) return
+        setPreferred(current ?? "auto")
       } catch {
         // window.api.ai unavailable in non-electron — keep all defaults.
       }
@@ -71,6 +83,17 @@ export function AiKeysSection() {
       cancelled = true
     }
   }, [])
+
+  async function changePreferred(next: PreferredOption) {
+    const previous = preferred
+    setPreferred(next)
+    try {
+      await library.ai.setPreferredProvider(next === "auto" ? null : next)
+    } catch (err) {
+      console.error("Failed to save preferred provider:", err)
+      setPreferred(previous)
+    }
+  }
 
   async function save(p: AiProvider) {
     const value = state[p].value.trim()
@@ -96,10 +119,17 @@ export function AiKeysSection() {
         ...prev,
         [p]: { has: false, value: "", showing: false, saving: false },
       }))
+      // If the removed key was the preferred one, drop the preference so we
+      // don't keep pointing at a key that no longer exists.
+      if (preferred === p) {
+        await changePreferred("auto")
+      }
     } catch {
       setState((prev) => ({ ...prev, [p]: { ...prev[p], saving: false } }))
     }
   }
+
+  const hasAnyKey = PROVIDERS.some((p) => state[p.id].has)
 
   return (
     <div>
@@ -107,6 +137,49 @@ export function AiKeysSection() {
         <Sparkles className="size-3" />
         AI provider keys
       </div>
+
+      {hasAnyKey && (
+        <div className="mb-3 rounded-md border border-white/[0.06] p-2">
+          <div className="text-[11px] text-white/60 mb-1.5">
+            Use for auto-tag &amp; caption
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {PREFERRED_OPTIONS.map((opt) => {
+              const active = preferred === opt.id
+              const disabled =
+                opt.id !== "auto" && !state[opt.id as AiProvider].has
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    if (!disabled && !active) void changePreferred(opt.id)
+                  }}
+                  disabled={disabled}
+                  className={
+                    "px-2 h-6 rounded-full text-[11px] border transition-colors " +
+                    (active
+                      ? "bg-white text-black border-white"
+                      : disabled
+                        ? "bg-transparent text-white/25 border-white/[0.06] cursor-not-allowed"
+                        : "bg-white/[0.04] text-white/70 border-white/[0.08] hover:bg-white/[0.08] hover:text-white")
+                  }
+                  title={
+                    disabled
+                      ? `Add a ${opt.label} key below to enable`
+                      : opt.id === "auto"
+                        ? "First available provider in the order Anthropic → OpenAI → OpenRouter"
+                        : undefined
+                  }
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2">
         {PROVIDERS.map((p) => {
           const s = state[p.id]

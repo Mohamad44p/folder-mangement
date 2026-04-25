@@ -33,7 +33,7 @@ export function NewProjectSlot({ onClick }: NewProjectSlotProps) {
       setDisplayedText("")
       setIsTypingComplete(false)
     }
-  }, [isHovered])
+  }, [isHovered, fullText])
 
   return (
     <div

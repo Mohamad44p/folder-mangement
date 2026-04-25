@@ -6,7 +6,7 @@ import { useState } from "react"
 
 const REACTIONS = ["👍", "❤️", "🔥", "👀", "✨", "🎯", "🚀"]
 
-export function ReactionsBar({ folderId, fileId, compact }: { folderId: string; fileId: string; compact?: boolean }) {
+export function ReactionsBar({ folderId, fileId, compact: _compact }: { folderId: string; fileId: string; compact?: boolean }) {
   const { getFolder, toggleFileReaction } = useFolders()
   const file = getFolder(folderId)?.files?.find((f) => f.id === fileId)
   const [pickerOpen, setPickerOpen] = useState(false)

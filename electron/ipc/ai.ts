@@ -5,6 +5,10 @@ import { wrapIpc } from "./envelope"
 import type { AiProvider } from "../../src/lib/library/types"
 
 const KEYS_FILE = "ai-keys.dat"
+// Reserved key inside ai-keys.dat used to remember the user's preferred
+// provider. Must not collide with any AiProvider value.
+export const PREFERRED_KEY = "__preferred__"
+const VALID_PROVIDERS: readonly AiProvider[] = ["anthropic", "openai", "openrouter"]
 
 function keysPath(): string {
   return path.join(app.getPath("userData"), KEYS_FILE)
@@ -57,6 +61,32 @@ export function registerAiIpc(): void {
     wrapIpc<void, [AiProvider]>(async (_e, provider) => {
       const keys = loadKeys()
       delete keys[provider]
+      saveKeys(keys)
+    }),
+  )
+  ipcMain.handle(
+    "ai:get-preferred",
+    wrapIpc<AiProvider | null>(async () => {
+      const keys = loadKeys()
+      const v = keys[PREFERRED_KEY]
+      return typeof v === "string" && VALID_PROVIDERS.includes(v as AiProvider)
+        ? (v as AiProvider)
+        : null
+    }),
+  )
+  ipcMain.handle(
+    "ai:set-preferred",
+    wrapIpc<void, [AiProvider | null]>(async (_e, provider) => {
+      const keys = loadKeys()
+      if (provider === null) {
+        delete keys[PREFERRED_KEY]
+      } else if (VALID_PROVIDERS.includes(provider)) {
+        keys[PREFERRED_KEY] = provider
+      } else {
+        throw Object.assign(new Error(`invalid provider: ${String(provider)}`), {
+          code: "INVALID_INPUT",
+        })
+      }
       saveKeys(keys)
     }),
   )

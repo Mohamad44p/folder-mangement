@@ -81,7 +81,7 @@ function pathFor(root: Project, target: Project, all: Project[]): string {
 }
 
 function strip(p: Project) {
-  const { files, activity, ...rest } = p
+  const { files, activity: _activity, ...rest } = p
   return {
     ...rest,
     fileCount: files?.length ?? 0,

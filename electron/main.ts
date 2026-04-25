@@ -20,6 +20,18 @@ import { wrapIpc } from "./ipc/envelope"
 import { registerAiIpc } from "./ipc/ai"
 import { registerAiRealIpc } from "./ipc/ai-real"
 import { registerSearchIpc } from "./ipc/search"
+import { registerFileMetaIpc } from "./ipc/file-meta"
+import { registerCommentsIpc } from "./ipc/comments"
+import { registerAnnotationsIpc } from "./ipc/annotations"
+import { registerReactionsIpc } from "./ipc/reactions"
+import { registerActivityIpc } from "./ipc/activity"
+import { registerSavedSearchesIpc } from "./ipc/saved-searches"
+import { registerFolderFieldsIpc } from "./ipc/folder-fields"
+import { registerChecklistIpc } from "./ipc/checklist"
+import { registerVersionsIpc } from "./ipc/versions"
+import { registerTagsIpc } from "./ipc/tags"
+import { registerPaletteIpc } from "./ipc/palette"
+import { registerSmartFoldersIpc } from "./ipc/smart-folders"
 import { startAutoUpdate } from "./auto-update"
 import {
   registerFoldersScheme,
@@ -67,7 +79,36 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webSecurity: true,
     },
+  })
+
+  // Route any new-window request out to the OS browser; never spawn a renderer.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("http:") || url.startsWith("https:")) {
+      void shell.openExternal(url)
+    }
+    return { action: "deny" }
+  })
+
+  // Block in-app navigation to anything that isn't our own renderer or the
+  // dev server. External links go to the OS browser instead of replacing the
+  // app's document.
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    let parsed: URL
+    try {
+      parsed = new URL(url)
+    } catch {
+      event.preventDefault()
+      return
+    }
+    const isDevHost = parsed.host === "localhost:5173" && parsed.protocol.startsWith("http")
+    const isLocalDoc = parsed.protocol === "file:" || parsed.protocol === "folders:"
+    if (isDevHost || isLocalDoc) return
+    event.preventDefault()
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      void shell.openExternal(url)
+    }
   })
 
   if (isDev) {
@@ -100,14 +141,29 @@ async function bootstrapLibrary(): Promise<void> {
 
   await reconcileLibrary({ db, queries, libraryRoot: root })
 
-  libraryService = new LibraryService({ db, queries, libraryRoot: root })
-  const filesService = new FilesService({ db, queries, libraryRoot: root })
+  // Watcher is created first so it can be injected into the services and
+  // suppress chokidar events for app-initiated disk mutations (mute/unmute).
+  watcher = new LibraryWatcher({ libraryRoot: root })
+
+  libraryService = new LibraryService({ db, queries, libraryRoot: root, watcher })
+  const filesService = new FilesService({ db, queries, libraryRoot: root, watcher })
   registerLibraryIpc(libraryService)
   registerFilesIpc(filesService, db)
   registerSearchIpc(db)
   registerAiRealIpc(db)
+  registerFileMetaIpc(db)
+  registerCommentsIpc(db)
+  registerAnnotationsIpc(db)
+  registerReactionsIpc(db)
+  registerActivityIpc(db)
+  registerSavedSearchesIpc(db)
+  registerFolderFieldsIpc(db)
+  registerChecklistIpc(db)
+  registerVersionsIpc(db, root)
+  registerTagsIpc(db)
+  registerPaletteIpc(db)
+  registerSmartFoldersIpc(db)
 
-  watcher = new LibraryWatcher({ libraryRoot: root })
   watcher.start()
 
   bootstrapped = true
@@ -154,6 +210,16 @@ if (!gotLock) {
   })
 
   void app.whenReady().then(async () => {
+    if (process.platform === "darwin") {
+      const iconPath = resolveIconPath()
+      if (iconPath && app.dock) {
+        try {
+          app.dock.setIcon(iconPath)
+        } catch (err) {
+          console.error("Failed to set macOS dock icon:", err)
+        }
+      }
+    }
     registerSettingsIpc(settingsStore)
     registerShellIpc()
     registerAppMetaIpc()

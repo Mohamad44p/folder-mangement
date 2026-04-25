@@ -9,6 +9,7 @@ import {
   atomicRename,
   trashRoot,
 } from "../fs-ops"
+import type { LibraryWatcher } from "./fs-watcher"
 import type {
   CreateFolderInput,
   FolderRecord,
@@ -18,6 +19,7 @@ interface LibraryDeps {
   db: Database.Database
   queries: Queries
   libraryRoot: string
+  watcher?: LibraryWatcher
 }
 
 const DEFAULT_WORKSPACE = "default"
@@ -26,11 +28,23 @@ export class LibraryService {
   private readonly db: Database.Database
   private readonly q: Queries
   private readonly root: string
+  private watcher: LibraryWatcher | null
 
   constructor(deps: LibraryDeps) {
     this.db = deps.db
     this.q = deps.queries
     this.root = deps.libraryRoot
+    this.watcher = deps.watcher ?? null
+  }
+
+  setWatcher(w: LibraryWatcher | null): void {
+    this.watcher = w
+  }
+
+  private mute(paths: (string | null | undefined)[]): void {
+    const real = paths.filter((p): p is string => typeof p === "string" && p.length > 0)
+    if (real.length === 0) return
+    this.watcher?.mutePathsTemporarily(real)
   }
 
   close(): void {
@@ -64,7 +78,9 @@ export class LibraryService {
     }
     const parentPath = parentRow?.abs_path ?? this.root
     const proposed = path.join(parentPath, sanitizeName(input.name))
+    this.mute([proposed])
     const finalPath = atomicCreateDir(proposed)
+    this.mute([finalPath])
     const id = input.id ?? uuid()
     this.q.insertFolder.run({
       id,
@@ -82,7 +98,9 @@ export class LibraryService {
     const row = this.q.getFolderById.get(id) as FolderRow | undefined
     if (!row) throw notFound(`folder ${id} not found`)
     const newPath = path.join(path.dirname(row.abs_path), sanitizeName(name))
+    this.mute([row.abs_path, newPath])
     const finalPath = atomicRename(row.abs_path, newPath)
+    this.mute([finalPath])
     const finalName = path.basename(finalPath)
     const tx = this.db.transaction(() => {
       this.q.updateFolderName.run(finalName, finalPath, id)
@@ -96,6 +114,11 @@ export class LibraryService {
   async deleteFolder(id: string): Promise<void> {
     const row = this.q.getFolderById.get(id) as FolderRow | undefined
     if (!row) return
+    const trashed = path.join(
+      trashRoot(this.root),
+      path.relative(this.root, row.abs_path),
+    )
+    this.mute([row.abs_path, trashed])
     if (fs.existsSync(row.abs_path)) {
       atomicMoveToTrash(this.root, row.abs_path)
     }
@@ -109,9 +132,11 @@ export class LibraryService {
       trashRoot(this.root),
       path.relative(this.root, row.abs_path),
     )
+    this.mute([trashed, row.abs_path])
     if (fs.existsSync(trashed)) {
       fs.mkdirSync(path.dirname(row.abs_path), { recursive: true })
       const finalPath = atomicRename(trashed, row.abs_path)
+      this.mute([finalPath])
       this.q.updateFolderPath.run(finalPath, id)
     }
     this.q.restoreFolderRow.run(id)
@@ -124,6 +149,7 @@ export class LibraryService {
       trashRoot(this.root),
       path.relative(this.root, row.abs_path),
     )
+    this.mute([row.abs_path, trashed])
     if (fs.existsSync(trashed)) {
       fs.rmSync(trashed, { recursive: true, force: true })
     }
@@ -136,15 +162,31 @@ export class LibraryService {
   async moveFolder(id: string, newParentId: string | null): Promise<FolderRecord> {
     const row = this.q.getFolderById.get(id) as FolderRow | undefined
     if (!row) throw notFound(`folder ${id} not found`)
+    if (newParentId === id) {
+      throw invalid("cannot move a folder into itself")
+    }
     const newParentRow = newParentId
       ? (this.q.getFolderById.get(newParentId) as FolderRow | undefined)
       : undefined
     if (newParentId && !newParentRow) {
       throw notFound(`parent ${newParentId} not found`)
     }
+    // Walk ancestors of the target parent to make sure we are not putting
+    // a folder inside one of its own descendants (which would orphan the subtree).
+    let cursor: FolderRow | undefined = newParentRow
+    while (cursor) {
+      if (cursor.id === id) {
+        throw invalid("cannot move a folder into one of its descendants")
+      }
+      cursor = cursor.parent_id
+        ? (this.q.getFolderById.get(cursor.parent_id) as FolderRow | undefined)
+        : undefined
+    }
     const targetParentPath = newParentRow?.abs_path ?? this.root
     const proposed = path.join(targetParentPath, row.name)
+    this.mute([row.abs_path, proposed])
     const finalPath = atomicRename(row.abs_path, proposed)
+    this.mute([finalPath])
     const tx = this.db.transaction(() => {
       this.q.updateFolderParentAndPath.run(newParentId, finalPath, id)
       this.cascadePathUpdate(row.abs_path, finalPath)

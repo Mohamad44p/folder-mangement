@@ -76,15 +76,11 @@ import { ActivityTimeline } from "./activity-timeline"
 import { FolderCalendarView } from "./folder-calendar-view"
 import { WorkflowStatusPill } from "./workflow-status-pill"
 import { DueDatePicker } from "./due-date-picker"
-import { CustomFieldsEditor } from "./custom-fields-editor"
-import { FolderChecklist } from "./folder-checklist"
-import { FileCommentsThread } from "./file-comments"
 import { ReactionsBar } from "./reactions-bar"
-import { ColorPaletteBar } from "./color-palette-bar"
 import { MapView } from "./map-view"
-import { aiDescribeFolder, aiSuggestCover } from "@/lib/ai-mocks"
+import { aiDescribeFolder, aiSuggestCover } from "@/lib/ai-helpers"
 import { library } from "@/lib/library"
-import { Lock, Unlock, Sparkles, MapPin, ScanText, Wand2, Search as SearchIcon } from "lucide-react"
+import { Lock, Unlock, Sparkles, MapPin, Wand2, Search as SearchIcon } from "lucide-react"
 
 const FILE_ICONS = {
   image: ImageIcon,
@@ -154,7 +150,7 @@ function FileGridItem({
   isCover,
   onToggleSelect,
   onClick,
-  onEdit,
+  onEdit: _onEdit,
   children,
 }: {
   folderId: string
@@ -362,7 +358,10 @@ export function FolderDetailDialog() {
 
   const isOpen = openFolderId !== null
   const folder = openFolderId ? getFolder(openFolderId) : undefined
-  const subfolders = openFolderId ? getSubfolders(openFolderId) : []
+  const subfolders = useMemo(
+    () => (openFolderId ? getSubfolders(openFolderId) : []),
+    [openFolderId, getSubfolders],
+  )
 
   const [tab, setTab] = useState<TabKey>("files")
   const [titleEditing, setTitleEditing] = useState(false)
@@ -396,6 +395,9 @@ export function FolderDetailDialog() {
       setTitleDraft(folder.title)
       setTagsDraft((folder.tags ?? []).join(", "))
     }
+    // Intentionally only re-run on folder switch — we don't want every
+    // mutation of the open folder to wipe in-progress edit drafts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openFolderId])
 
   // Keyboard shortcuts
@@ -440,6 +442,7 @@ export function FolderDetailDialog() {
     selected,
     folder,
     bulkDeleteFiles,
+    t,
   ])
 
   useEffect(() => {

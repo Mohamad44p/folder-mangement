@@ -3,7 +3,8 @@
 import { useFolders, type SearchHit } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
 import type { TranslationKey } from "@/lib/i18n-dict"
-import { localizeNumber, localizeTitle } from "@/lib/localize"
+import { localizeTitle } from "@/lib/localize"
+import { matchesFile, parseQuery, type ParsedQuery } from "@/lib/search-syntax"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   Search,
@@ -20,105 +21,24 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
-interface ParsedQuery {
-  text: string
-  tags: string[]
-  types: string[]
-  sizeGt?: number
-  sizeLt?: number
-  sizeEq?: number
-  before?: string             // ISO YYYY-MM-DD (exclusive upper bound)
-  after?: string              // ISO YYYY-MM-DD (exclusive lower bound)
-  nameContains?: string
-  favOnly?: boolean
+function hasAnyFilter(q: ParsedQuery): boolean {
+  return (
+    !!q.text ||
+    q.tags.length > 0 ||
+    q.types.length > 0 ||
+    !!q.size ||
+    !!q.before ||
+    !!q.after ||
+    !!q.nameContains ||
+    q.favoriteOnly
+  )
 }
 
-function parseQuery(raw: string): ParsedQuery {
-  const out: ParsedQuery = { text: "", tags: [], types: [] }
-  // Tokenize, preserving "double-quoted multi-word values".
-  const tokens: string[] = []
-  let buf = ""
-  let quoted = false
-  for (let i = 0; i < raw.length; i++) {
-    const ch = raw[i]
-    if (ch === '"') {
-      quoted = !quoted
-      continue
-    }
-    if (!quoted && /\s/.test(ch)) {
-      if (buf) tokens.push(buf)
-      buf = ""
-      continue
-    }
-    buf += ch
-  }
-  if (buf) tokens.push(buf)
-
-  const remaining: string[] = []
-  for (const tok of tokens) {
-    const lower = tok.toLowerCase()
-    if (lower === "fav" || lower === "favorite") {
-      out.favOnly = true
-      continue
-    }
-    const m = /^(\w+):(.+)$/.exec(tok)
-    if (m) {
-      const key = m[1].toLowerCase()
-      const val = m[2]
-      if (key === "tag" || key === "tags") {
-        out.tags.push(val.toLowerCase())
-        continue
-      }
-      if (key === "type") {
-        out.types.push(val.toLowerCase())
-        continue
-      }
-      if (key === "name") {
-        out.nameContains = val.toLowerCase()
-        continue
-      }
-      if (key === "before") {
-        const d = normalizeDate(val)
-        if (d) out.before = d
-        continue
-      }
-      if (key === "after") {
-        const d = normalizeDate(val)
-        if (d) out.after = d
-        continue
-      }
-      if (key === "size") {
-        const sm = /^(>=|<=|>|<|=)?(\d+(?:\.\d+)?)(kb|mb|gb|b)?$/i.exec(val)
-        if (sm) {
-          const op = sm[1] ?? ">"
-          const num = parseFloat(sm[2])
-          const unit = (sm[3] ?? "b").toLowerCase()
-          const bytes =
-            unit === "gb"
-              ? num * 1024 * 1024 * 1024
-              : unit === "mb"
-              ? num * 1024 * 1024
-              : unit === "kb"
-              ? num * 1024
-              : num
-          if (op === ">" || op === ">=") out.sizeGt = bytes
-          else if (op === "<" || op === "<=") out.sizeLt = bytes
-          else out.sizeEq = bytes
-          continue
-        }
-      }
-    }
-    remaining.push(tok)
-  }
-  out.text = remaining.join(" ").toLowerCase()
-  return out
-}
-
-function normalizeDate(input: string): string | null {
-  const s = input.replace(/\//g, "-")
-  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
-  return null
+function formatBytesShort(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024).toFixed(1)}GB`
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}KB`
+  return `${bytes}B`
 }
 
 function highlight(text: string, q: string): ReactNode {
@@ -180,73 +100,72 @@ export function GlobalSearchPalette() {
   const parsed = useMemo(() => parseQuery(query), [query])
 
   const results: SearchHit[] = useMemo(() => {
-    const hasFilters =
-      parsed.text ||
-      parsed.tags.length ||
-      parsed.types.length ||
-      parsed.sizeGt ||
-      parsed.sizeLt ||
-      parsed.sizeEq ||
-      parsed.before ||
-      parsed.after ||
-      parsed.nameContains ||
-      parsed.favOnly
-    if (!hasFilters) return []
+    if (!hasAnyFilter(parsed)) return []
+    const textNeedle = parsed.text.toLowerCase()
     const hits: SearchHit[] = []
     for (const f of folders) {
       if (f.deletedAt) continue
       const path = buildPathTitles(String(f.id)).map((title) => title)
 
-      // Folder-level matching
-      const folderMatches =
-        (parsed.text &&
-          (f.title.toLowerCase().includes(parsed.text) ||
-            (f.description ?? "").toLowerCase().includes(parsed.text))) ||
-        (parsed.tags.length > 0 &&
-          parsed.tags.every((tg) => (f.tags ?? []).map((x) => x.toLowerCase()).includes(tg)))
+      // Folder-level matching uses only the tokens that make sense for a
+      // folder (text + tags). File-only tokens (size, type, date, …) gate
+      // out the folder result so a `type:image` query doesn't surface the
+      // containing folder as a hit.
+      const folderTextHit =
+        textNeedle.length > 0 &&
+        (f.title.toLowerCase().includes(textNeedle) ||
+          (f.description ?? "").toLowerCase().includes(textNeedle))
+      const folderTagHit =
+        parsed.tags.length > 0 &&
+        parsed.tags.every((tg) => (f.tags ?? []).map((x) => x.toLowerCase()).includes(tg))
+      const folderMatches = folderTextHit || folderTagHit
 
       const fileOnlyFilters =
         parsed.types.length > 0 ||
-        !!parsed.sizeGt ||
-        !!parsed.sizeLt ||
-        !!parsed.sizeEq ||
+        !!parsed.size ||
         !!parsed.before ||
         !!parsed.after ||
         !!parsed.nameContains ||
-        !!parsed.favOnly
+        parsed.favoriteOnly
 
       if (folderMatches && !fileOnlyFilters) {
         hits.push({
           kind: "folder",
           folderId: String(f.id),
           folderTitle: localizeTitle(f, t),
-          matchedField: parsed.text ? "title" : "tag",
+          matchedField: textNeedle ? "title" : "tag",
           snippet: localizeTitle(f, t),
           pathTitles: path,
         })
       }
 
       for (const file of f.files ?? []) {
-        // text match (also searches caption + ocrText now)
-        if (parsed.text) {
-          const inName = file.name.toLowerCase().includes(parsed.text)
-          const inTags = (file.tags ?? []).some((tg) => tg.toLowerCase().includes(parsed.text))
-          const inDesc = (file.description ?? "").toLowerCase().includes(parsed.text)
-          const inOcr = (file.ocrText ?? "").toLowerCase().includes(parsed.text)
-          if (!inName && !inTags && !inDesc && !inOcr) continue
+        // FolderFile in renderer state does not carry `caption` (it lives in
+        // SQLite alongside ocr_text but isn't projected up to the UI yet),
+        // so omit it from the matcher input.
+        const ok = matchesFile(parsed, {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          uploadedAt: file.uploadedAt,
+          description: file.description,
+          ocrText: file.ocrText,
+          favorite: file.favorite,
+          tags: file.tags,
+        })
+        if (!ok) continue
+        // The shared matcher does not know about file tags as free-text
+        // haystacks. Preserve the legacy palette behaviour where typing
+        // a bare word like "vacation" also matches files tagged "vacation".
+        if (
+          textNeedle &&
+          !file.name.toLowerCase().includes(textNeedle) &&
+          !(file.description ?? "").toLowerCase().includes(textNeedle) &&
+          !(file.ocrText ?? "").toLowerCase().includes(textNeedle) &&
+          !(file.tags ?? []).some((tg) => tg.toLowerCase().includes(textNeedle))
+        ) {
+          continue
         }
-        if (parsed.types.length > 0 && !parsed.types.includes(file.type)) continue
-        if (parsed.tags.length > 0) {
-          const fileTags = (file.tags ?? []).map((tg) => tg.toLowerCase())
-          if (!parsed.tags.every((tg) => fileTags.includes(tg))) continue
-        }
-        if (typeof parsed.sizeGt === "number" && (file.size ?? 0) <= parsed.sizeGt) continue
-        if (typeof parsed.sizeLt === "number" && (file.size ?? Infinity) >= parsed.sizeLt) continue
-        if (typeof parsed.sizeEq === "number" && file.size !== parsed.sizeEq) continue
-        if (parsed.before && file.uploadedAt && file.uploadedAt >= parsed.before + "T00:00:00") continue
-        if (parsed.after && file.uploadedAt && file.uploadedAt <= parsed.after + "T23:59:59") continue
-        if (parsed.nameContains && !file.name.toLowerCase().includes(parsed.nameContains)) continue
-        if (parsed.favOnly && !file.favorite) continue
 
         hits.push({
           kind: "file",
@@ -387,9 +306,8 @@ export function GlobalSearchPalette() {
             {/* Active filter chips */}
             {(parsed.tags.length > 0 ||
               parsed.types.length > 0 ||
-              parsed.sizeGt ||
-              parsed.sizeLt ||
-              parsed.favOnly) && (
+              parsed.size ||
+              parsed.favoriteOnly) && (
               <div className="px-4 py-2 border-b border-white/[0.06] flex flex-wrap gap-1">
                 {parsed.tags.map((tg) => (
                   <span
@@ -407,17 +325,13 @@ export function GlobalSearchPalette() {
                     type:{tp}
                   </span>
                 ))}
-                {parsed.sizeGt && (
+                {parsed.size && (
                   <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-200 font-mono">
-                    size:&gt;{parsed.sizeGt}
+                    size:{parsed.size.op}
+                    {formatBytesShort(parsed.size.bytes)}
                   </span>
                 )}
-                {parsed.sizeLt && (
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-200 font-mono">
-                    size:&lt;{parsed.sizeLt}
-                  </span>
-                )}
-                {parsed.favOnly && (
+                {parsed.favoriteOnly && (
                   <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-[10px] text-yellow-200 font-mono">
                     fav
                   </span>

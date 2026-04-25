@@ -12,7 +12,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { extractPalette, getDimensions, pickColorAt } from "@/lib/color-palette"
-import { mockExif, mockGeo } from "@/lib/exif"
+import { library } from "@/lib/library"
 import { ColorPaletteBar } from "./color-palette-bar"
 import { ExifPanel } from "./exif-panel"
 import { AnnotationsCanvas } from "./annotations-canvas"
@@ -33,7 +33,6 @@ export function ImageLightbox() {
     setFilePalette,
     setFileDimensions,
     setFileExif,
-    setFileGeo,
     setFileAnnotations,
   } = useFolders()
   const { t, lang } = useT()
@@ -100,28 +99,35 @@ export function ImageLightbox() {
     return () => window.removeEventListener("keydown", handler)
   }, [lightbox, goNext, goPrev, closeLightbox, current, toggleFileFavorite, rotateFile, eyedropperOn])
 
-  // Lazy-extract palette / dimensions / exif on first lightbox open per file
+  // Lazy-extract palette / dimensions / EXIF on first lightbox open per file.
+  // EXIF is read from the SQLite store (populated at upload time by the main
+  // process via exifr); palette + dimensions are computed in the renderer.
+  // Geo coordinates already arrive on the file record from the main process.
   useEffect(() => {
     if (!current || !lightbox) return
     if (current.type !== "image") return
     if (!current.palette) {
-      extractPalette(current.url, 5).then((p) => {
+      void extractPalette(current.url, 5).then((p) => {
         if (p.length > 0) setFilePalette(lightbox.folderId, current.id, p)
       })
     }
     if (!current.dimensions) {
-      getDimensions(current.url).then((d) => {
+      void getDimensions(current.url).then((d) => {
         if (d) setFileDimensions(lightbox.folderId, current.id, d)
       })
     }
     if (!current.exif) {
-      setFileExif(lightbox.folderId, current.id, mockExif(current.id, current.name))
+      void library.files
+        .getExif(current.id)
+        .then((res) => {
+          const flat = res?.data ? flattenExif(res.data) : {}
+          setFileExif(lightbox.folderId, current.id, flat)
+        })
+        .catch(() => {
+          setFileExif(lightbox.folderId, current.id, {})
+        })
     }
-    if (!current.geo) {
-      const g = mockGeo(current.id)
-      if (g) setFileGeo(lightbox.folderId, current.id, g)
-    }
-  }, [current, lightbox, setFilePalette, setFileDimensions, setFileExif, setFileGeo])
+  }, [current, lightbox, setFilePalette, setFileDimensions, setFileExif])
 
   const handleEyedrop = useCallback(
     async (e: React.PointerEvent) => {
@@ -346,7 +352,7 @@ export function ImageLightbox() {
               </div>
             ) : current.type === "video" ? (
               <div className="w-[80vw] h-[70vh] max-w-[1200px]">
-                <VideoPlayerInline url={current.url} />
+                <VideoPlayerInline url={current.url} fileId={current.id} />
               </div>
             ) : current.type === "document" ? (
               <div className="w-[80vw] h-[80vh] max-w-[1000px]">
@@ -524,4 +530,39 @@ function Detail({ label, value, multi }: { label: string; value: string; multi?:
       <div className={`text-white/85 ${multi ? "" : "truncate"}`}>{value}</div>
     </div>
   )
+}
+
+const EXIF_FIELDS: Array<[string, string]> = [
+  ["Make", "Camera make"],
+  ["Model", "Camera model"],
+  ["LensModel", "Lens"],
+  ["FNumber", "Aperture"],
+  ["ExposureTime", "Shutter"],
+  ["ISO", "ISO"],
+  ["FocalLength", "Focal length"],
+  ["WhiteBalance", "White balance"],
+  ["DateTimeOriginal", "Taken"],
+]
+
+function flattenExif(data: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, label] of EXIF_FIELDS) {
+    const v = data[key]
+    if (v == null) continue
+    const s = formatExifValue(key, v)
+    if (s) out[label] = s
+  }
+  return out
+}
+
+function formatExifValue(key: string, value: unknown): string {
+  if (key === "FNumber" && typeof value === "number") return `f/${value}`
+  if (key === "ExposureTime" && typeof value === "number") {
+    return value < 1 ? `1/${Math.round(1 / value)}` : `${value}s`
+  }
+  if (key === "FocalLength" && typeof value === "number") return `${Math.round(value)}mm`
+  if (typeof value === "string") return value
+  if (typeof value === "number") return String(value)
+  if (typeof value === "boolean") return value ? "Yes" : "No"
+  return ""
 }

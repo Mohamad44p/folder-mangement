@@ -3,7 +3,7 @@
 import * as Popover from "@radix-ui/react-popover"
 import { useFolders } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
-import { Check, Plus, Settings, ChevronDown } from "lucide-react"
+import { Check, Settings, ChevronDown } from "lucide-react"
 
 const WORKSPACE_NAME_KEYS: Record<string, "workspace.personal"> = {
   Personal: "workspace.personal",

@@ -3,7 +3,7 @@
 import { useFolders } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
 import { localizeTitle } from "@/lib/localize"
-import { X, Plus } from "lucide-react"
+import { X } from "lucide-react"
 
 export function FolderTabsBar() {
   const { tabs, activeTab, switchTab, removeTab, openFolder, openFolderId, getFolder } = useFolders()

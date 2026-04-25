@@ -1,6 +1,7 @@
 import Database from "better-sqlite3"
 import * as fs from "node:fs"
 import * as path from "node:path"
+import { runMigrations } from "./migrations"
 
 export interface OpenedDb {
   db: Database.Database
@@ -26,16 +27,15 @@ export function openLibraryDb(libraryRoot: string): OpenedDb {
   db.pragma("journal_mode = WAL")
   db.pragma("foreign_keys = ON")
   db.pragma("synchronous = NORMAL")
+  db.pragma("busy_timeout = 5000")
+  db.pragma("temp_store = MEMORY")
+  db.pragma("cache_size = -16384")
 
-  applySchema(db)
+  const baselineSql = fs.readFileSync(resolveSchemaPath(), "utf8")
+  runMigrations(db, baselineSql)
   verifyIntegrity(db)
 
   return { db, path: dbPath }
-}
-
-function applySchema(db: Database.Database): void {
-  const sql = fs.readFileSync(resolveSchemaPath(), "utf8")
-  db.exec(sql)
 }
 
 function resolveSchemaPath(): string {

@@ -1,56 +1,19 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import type { Project } from "@/lib/data"
 import type { ImagePosition } from "./types"
 import { useT } from "@/contexts/i18n-context"
-import { formatDateLocalized, localizeNumber } from "@/lib/localize"
+import { formatDateLocalized } from "@/lib/localize"
 
 interface UseProjectStateProps {
   project: Project
   index: number
-  generationDuration: number
 }
 
-export function useProjectState({ project, index, generationDuration }: UseProjectStateProps) {
+export function useProjectState({ project, index }: UseProjectStateProps) {
   const { t, lang } = useT()
   const [isHovered, setIsHovered] = useState(false)
-  const [generationComplete, setGenerationComplete] = useState(false)
-  const [progress, setProgress] = useState(project.progress || 0)
-  const [sparklesFading, setSparklesFading] = useState(false)
-  const [showImages, setShowImages] = useState(false)
-  const [showGeneratingFooter, setShowGeneratingFooter] = useState(project.isGenerating || false)
-
-  // Generation progress
-  useEffect(() => {
-    if (!project.isGenerating) return
-
-    const startProgress = project.progress || 0
-    const startTime = Date.now()
-    const duration = generationDuration
-
-    const progressInterval = setInterval(() => {
-      const elapsed = Date.now() - startTime
-      const newProgress = Math.min(100, startProgress + ((100 - startProgress) * elapsed) / duration)
-      setProgress(Math.round(newProgress))
-
-      if (elapsed >= duration) {
-        clearInterval(progressInterval)
-        setSparklesFading(true)
-        setTimeout(() => setShowImages(true), 400)
-        setTimeout(() => setGenerationComplete(true), 1200)
-        setTimeout(() => setShowGeneratingFooter(false), 1200 + 1500)
-      }
-    }, 100)
-
-    return () => clearInterval(progressInterval)
-  }, [project.isGenerating, project.progress, generationDuration])
-
-  const remainingEta = useMemo(() => {
-    const remaining = Math.max(0, Math.ceil((100 - progress) / 10))
-    const num = localizeNumber(remaining, lang)
-    return lang === "ar" ? "~" + num + "ث" : "~" + num + "s"
-  }, [progress, lang])
 
   const fileCount = project.fileCount
 
@@ -71,25 +34,19 @@ export function useProjectState({ project, index, generationDuration }: UseProje
   }, [])
 
   const formattedDate = useMemo(() => {
+    if (project.createdAt) {
+      const d = new Date(project.createdAt)
+      if (!Number.isNaN(d.getTime())) return formatDateLocalized(d, t, lang)
+    }
     const now = new Date()
-    const hoursAgo = index * 24 + Math.floor(project.title.charCodeAt(0) % 20)
-    const date = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000)
-    return formatDateLocalized(date, t, lang)
-  }, [project.title, index, t, lang])
-
-  const isGenerating = !!(project.isGenerating && !generationComplete)
+    const hoursAgo = index * 24
+    return formatDateLocalized(new Date(now.getTime() - hoursAgo * 3600_000), t, lang)
+  }, [project.createdAt, index, t, lang])
 
   return {
     isHovered,
     setIsHovered,
-    generationComplete,
-    progress,
-    sparklesFading,
-    showImages,
-    showGeneratingFooter,
-    isGenerating,
     fileCount,
-    remainingEta,
     formattedDate,
     imagePositions,
   }

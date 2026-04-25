@@ -2,8 +2,8 @@
 
 import type { FileAnnotation } from "@/lib/data"
 import { useT } from "@/contexts/i18n-context"
-import { Square as SquareIcon, ArrowRight, Type, Circle as CircleIcon, Trash2, Save, Eye, EyeOff } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { Square as SquareIcon, ArrowRight, Type, Circle as CircleIcon, Trash2, Eye, EyeOff } from "lucide-react"
+import { useRef, useState } from "react"
 
 const COLORS = ["#ffffff", "#fbbf24", "#fb7185", "#34d399", "#60a5fa", "#a78bfa"]
 
@@ -14,8 +14,8 @@ export function AnnotationsCanvas({
   onChange,
   visible,
   onToggleVisible,
-  width,
-  height,
+  width: _width,
+  height: _height,
 }: {
   annotations: FileAnnotation[]
   onChange: (a: FileAnnotation[]) => void
@@ -95,8 +95,6 @@ export function AnnotationsCanvas({
       setDrawing(null)
     }
   }
-
-  const remove = (id: string) => onChange(annotations.filter((a) => a.id !== id))
 
   const renderAnn = (a: FileAnnotation, key?: string) => {
     if (a.kind === "rect") {

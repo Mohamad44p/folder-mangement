@@ -9,9 +9,13 @@ export function setPlayingFile(fileId: string | null) {
   playStateListeners.forEach((listener) => listener(fileId))
 }
 
-export function subscribeToPlayState(listener: (playingFileId: string | null) => void) {
+export function subscribeToPlayState(
+  listener: (playingFileId: string | null) => void,
+): () => void {
   playStateListeners.add(listener)
-  return () => playStateListeners.delete(listener)
+  return () => {
+    playStateListeners.delete(listener)
+  }
 }
 
 export function getCurrentPlayingFile() {

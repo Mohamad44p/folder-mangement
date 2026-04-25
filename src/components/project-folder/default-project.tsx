@@ -41,11 +41,11 @@ export function DefaultProject({
   isHovered,
   setIsHovered,
   isGenerating,
-  generationComplete,
+  generationComplete: _generationComplete,
   progress,
   sparklesFading,
   showImages,
-  showGeneratingFooter,
+  showGeneratingFooter: _showGeneratingFooter,
   imagePositions,
   fileCount,
   remainingEta,
@@ -133,6 +133,10 @@ export function DefaultProject({
         document.removeEventListener("mousedown", handleClickOutside)
       }
     }
+    // handleCancelEdit closes over this component's state and is re-created
+    // each render; including it would re-register the click listener on every
+    // edit-title keystroke. We re-register only when isEditing toggles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing])
 
   // Close delete confirmation when clicking outside
@@ -151,6 +155,9 @@ export function DefaultProject({
         document.removeEventListener("mousedown", handleClickOutside)
       }
     }
+    // cancelDeleteCountdown is re-created each render; we only want to
+    // re-register the click listener when the confirm/delete state toggles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDeleteConfirm, isDeleting])
 
   const handleEditClick = () => {

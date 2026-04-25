@@ -3,7 +3,7 @@
 import { useFolders } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
 import { localizeNumber, localizeTitle } from "@/lib/localize"
-import { aiVisualSimilar } from "@/lib/ai-mocks"
+import { aiVisualSimilar } from "@/lib/ai-helpers"
 import { AnimatePresence, motion } from "framer-motion"
 import { X, Sparkles, ExternalLink } from "lucide-react"
 import { useMemo } from "react"
