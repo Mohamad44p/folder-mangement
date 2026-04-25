@@ -9,6 +9,7 @@
 /release/
 /out/
 /build/
+/.next/
 
 # debug
 npm-debug.log*
