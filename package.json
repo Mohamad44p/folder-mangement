@@ -5,11 +5,16 @@
   "description": "Local-first folder management desktop app for Windows and macOS",
   "main": "dist-electron/main.js",
   "scripts": {
+    "dev": "concurrently -k -n vite,electron -c blue,magenta \"bun run dev:renderer\" \"bun run dev:electron\"",
     "dev:renderer": "vite",
+    "dev:electron": "wait-on tcp:5173 && bun run build:electron && cross-env NODE_ENV=development electron dist-electron/main.js",
+    "build": "bun run build:renderer && bun run build:electron",
     "build:renderer": "vite build",
+    "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --target=node20 --external:electron --external:better-sqlite3 --external:chokidar --external:sharp --outdir=dist-electron",
+    "package": "bun run build && electron-builder",
     "preview": "vite preview",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
@@ -70,17 +75,26 @@
     "@fontsource-variable/inter": "^5.1.0",
     "@fontsource/cairo": "^5.1.0",
     "@tailwindcss/postcss": "^4.1.9",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/wait-on": "^5.3.4",
     "@vitejs/plugin-react": "^4.3.0",
     "baseline-browser-mapping": "^2.10.22",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "electron-updater": "^6.3.0",
+    "esbuild": "^0.24.0",
     "eslint": "^9.0.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "typescript": "^6.0.3",
     "vite": "^6.0.0",
-    "vite-tsconfig-paths": "^5.1.0"
+    "vite-tsconfig-paths": "^5.1.0",
+    "wait-on": "^8.0.0"
   },
   "overrides": {
     "baseline-browser-mapping": "^2.10.22"
