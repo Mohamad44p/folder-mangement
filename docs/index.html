@@ -314,7 +314,6 @@
   const REPO = "Mohamad44p/folder-mangement"
   const RELEASES_URL = `https://github.com/${REPO}/releases`
   const CACHE_KEY = "folders.latestRelease"
-  const CACHE_TTL_MS = 5 * 60 * 1000
 
   const PLATFORMS = {
     "win-x64": { suffix: "win-x64.exe", label: "Windows (x64)" },
@@ -336,24 +335,30 @@
   }
 
   async function loadRelease() {
+    // Always fetch fresh — a download page is the worst place to serve
+    // stale data. localStorage is only a fallback when GitHub is
+    // unreachable or rate-limited (60 req/hr unauthenticated). We bust
+    // browser HTTP caches with a no-store header.
     try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null")
-      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-        return cached.data
-      }
-    } catch {}
-
-    // /releases (not /releases/latest) so pre-releases count too. The list
-    // is already newest-first; pick the first non-draft entry.
-    const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=10`)
-    if (!res.ok) throw new Error(`GitHub API ${res.status}`)
-    const list = await res.json()
-    const data = Array.isArray(list) ? list.find((r) => !r.draft) : null
-    if (!data) throw new Error("no releases yet")
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
-    } catch {}
-    return data
+      const res = await fetch(
+        `https://api.github.com/repos/${REPO}/releases?per_page=10`,
+        { cache: "no-store", headers: { Accept: "application/vnd.github+json" } },
+      )
+      if (!res.ok) throw new Error(`GitHub API ${res.status}`)
+      const list = await res.json()
+      const data = Array.isArray(list) ? list.find((r) => !r.draft) : null
+      if (!data) throw new Error("no releases yet")
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
+      } catch {}
+      return data
+    } catch (err) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null")
+        if (cached?.data) return cached.data
+      } catch {}
+      throw err
+    }
   }
 
   function findAsset(release, suffix) {
