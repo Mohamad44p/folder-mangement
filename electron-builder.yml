@@ -29,7 +29,7 @@ publish:
   provider: github
   owner: Mohamad44p
   repo: folder-mangement
-  releaseType: draft
+  releaseType: release
 
 win:
   target:
