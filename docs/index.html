@@ -109,35 +109,55 @@
     margin-bottom: 48px;
   }
 
-  .btn-download {
+  .button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .btn {
     display: inline-flex;
     align-items: center;
     gap: 12px;
-    background: var(--accent);
-    color: var(--accent-text);
-    padding: 16px 32px;
+    padding: 16px 28px;
     border-radius: var(--radius);
     text-decoration: none;
     font-weight: 600;
-    font-size: 17px;
-    transition: transform 0.12s, background 0.15s, box-shadow 0.15s;
-    box-shadow: 0 8px 24px rgba(253, 205, 58, 0.2);
-    border: none;
+    font-size: 16px;
+    transition: transform 0.12s, background 0.15s, box-shadow 0.15s,
+      border-color 0.15s, color 0.15s;
+    border: 1px solid transparent;
     cursor: pointer;
+    line-height: 1;
   }
-  .btn-download:hover {
+  .btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    box-shadow: 0 8px 24px rgba(253, 205, 58, 0.2);
+  }
+  .btn-primary:hover {
     background: var(--accent-hover);
     transform: translateY(-1px);
     box-shadow: 0 12px 32px rgba(253, 205, 58, 0.28);
   }
-  .btn-download:disabled {
+  .btn-primary[aria-disabled="true"] {
     opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
+    cursor: progress;
+    pointer-events: none;
   }
-  .btn-download svg {
-    width: 20px;
-    height: 20px;
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover {
+    background: var(--surface-2);
+    border-color: #333;
+    transform: translateY(-1px);
   }
 
   .meta {
@@ -242,14 +262,22 @@
         </p>
 
         <div class="download-section">
-          <a id="download" class="btn-download" href="#" rel="noopener">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            <span id="download-label">Loading…</span>
-          </a>
+          <div class="button-row">
+            <a id="download" class="btn btn-primary" href="#" aria-disabled="true" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span id="download-label">Loading…</span>
+            </a>
+            <a class="btn btn-secondary" href="https://github.com/Mohamad44p/folder-mangement/releases" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+              </svg>
+              <span>View releases on GitHub</span>
+            </a>
+          </div>
           <div class="meta" id="meta">Detecting your platform…</div>
           <div class="alt-downloads" id="alt-downloads"></div>
         </div>
@@ -315,9 +343,13 @@
       }
     } catch {}
 
-    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
+    // /releases (not /releases/latest) so pre-releases count too. The list
+    // is already newest-first; pick the first non-draft entry.
+    const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=10`)
     if (!res.ok) throw new Error(`GitHub API ${res.status}`)
-    const data = await res.json()
+    const list = await res.json()
+    const data = Array.isArray(list) ? list.find((r) => !r.draft) : null
+    if (!data) throw new Error("no releases yet")
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
     } catch {}
@@ -338,8 +370,10 @@
     const button = document.getElementById("download")
     const label = document.getElementById("download-label")
     const meta = document.getElementById("meta")
-    label.textContent = "View releases on GitHub"
+    label.textContent = "Pick from GitHub releases"
     button.href = RELEASES_URL
+    button.removeAttribute("aria-disabled")
+    button.target = "_blank"
     meta.textContent = msg
   }
 
@@ -389,9 +423,11 @@
     }
 
     button.href = asset.browser_download_url
+    button.setAttribute("download", asset.name)
+    button.removeAttribute("aria-disabled")
     label.textContent = `Download for ${platform.label}`
     const size = formatBytes(asset.size)
-    meta.innerHTML = `${release.tag_name}${size ? " · " + size : ""} · <a href="${RELEASES_URL}" rel="noopener">all releases</a>`
+    meta.textContent = `${release.tag_name}${size ? " · " + size : ""}`
     renderAltDownloads(release, platformKey)
   }
 
