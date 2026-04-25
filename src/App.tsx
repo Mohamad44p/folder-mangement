@@ -35,9 +35,12 @@ import { ImageSearchModal } from "@/components/image-search-modal"
 import { OnboardingTour } from "@/components/onboarding-tour"
 import { FolderContextMenu } from "@/components/folder-context-menu"
 import { LibraryPicker } from "@/components/library-picker"
+import { VirtualFolderGrid } from "@/components/virtual-folder-grid"
 import { library } from "@/lib/library"
 import { toast } from "sonner"
 import type { Project } from "@/lib/data"
+
+const VIRTUALIZE_THRESHOLD = 100
 
 const PROJECT_CONFIGS = [
   {
@@ -312,6 +315,18 @@ export function App() {
                 </p>
                 <p className="text-[12px] text-white/30 mt-1">{t("empty.searchDesc")}</p>
               </div>
+            ) : allProjects.length > VIRTUALIZE_THRESHOLD ? (
+              <>
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-4 sm:mb-6">
+                  <NewProjectSlot onClick={handleCreateProject} />
+                </div>
+                <VirtualFolderGrid
+                  projects={allProjects}
+                  onRemove={handleRemoveFolder}
+                  onClick={handleFolderClick}
+                  onRename={handleRenameProject}
+                />
+              </>
             ) : (
               <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <motion.div
