@@ -59,4 +59,10 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
+  {
+    files: ["scripts/**/*.{js,mjs}"],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 )

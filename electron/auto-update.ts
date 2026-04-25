@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron"
+import { BrowserWindow, ipcMain } from "electron"
 import { autoUpdater } from "electron-updater"
 
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
