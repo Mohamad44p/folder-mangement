@@ -108,6 +108,7 @@
     "eslint": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "globals": "^15.0.0",
+    "png-to-ico": "^3.0.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
     "typescript": "^6.0.3",
