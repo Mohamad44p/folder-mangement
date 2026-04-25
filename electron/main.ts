@@ -16,6 +16,9 @@ import {
   settingsStore,
 } from "./ipc/settings"
 import { wrapIpc } from "./ipc/envelope"
+import { registerAiIpc } from "./ipc/ai"
+import { registerSearchIpc } from "./ipc/search"
+import { startAutoUpdate } from "./auto-update"
 import {
   registerFoldersScheme,
   registerFoldersSchemePrivilege,
@@ -79,6 +82,7 @@ async function bootstrapLibrary(): Promise<void> {
   const filesService = new FilesService({ db, queries, libraryRoot: root })
   registerLibraryIpc(libraryService)
   registerFilesIpc(filesService, db)
+  registerSearchIpc(db)
 
   watcher = new LibraryWatcher({ libraryRoot: root })
   watcher.start()
@@ -130,8 +134,10 @@ if (!gotLock) {
     registerSettingsIpc(settingsStore)
     registerShellIpc()
     registerAppMetaIpc()
+    registerAiIpc()
     await bootstrapLibrary()
     createWindow()
+    startAutoUpdate(() => mainWindow)
   })
 
   app.on("window-all-closed", () => {

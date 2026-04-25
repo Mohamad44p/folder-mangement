@@ -1,0 +1,53 @@
+appId: io.folders.app
+productName: Folders
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - dist-electron/**/*
+  - dist-renderer/**/*
+  - electron/db/schema.sql
+  - package.json
+  - "!**/.vscode/*"
+  - "!src/**/*"
+  - "!docs/**/*"
+  - "!**/*.test.{ts,tsx}"
+
+asar: true
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+  - "**/node_modules/sharp/**"
+
+extraResources:
+  - from: electron/db/schema.sql
+    to: schema.sql
+
+publish:
+  provider: github
+  releaseType: draft
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+        - arm64
+  signAndEditExecutable: false
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.productivity
+  hardenedRuntime: false
+  gatekeeperAssess: false
