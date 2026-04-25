@@ -225,7 +225,14 @@ if (!gotLock) {
     registerAppMetaIpc()
     registerAiIpc()
     registerUpdateIpc()
-    await bootstrapLibrary()
+    try {
+      await bootstrapLibrary()
+    } catch (err) {
+      // Don't let a library/migration/reconcile failure leave the user
+      // staring at a hidden window forever — log it and keep going so
+      // the UI at least renders the LibraryPicker / error state.
+      console.error("bootstrapLibrary failed:", err)
+    }
     createWindow()
     startAutoUpdate(() => mainWindow)
   })

@@ -17,20 +17,38 @@ const META_DIR = ".folders-app"
 export async function reconcileLibrary(deps: ReconcileDeps): Promise<void> {
   const { db, queries: q, libraryRoot } = deps
   const onDisk = walkLibrary(libraryRoot)
-  const folderRows = q.listAllActiveFolders.all("default") as FolderRow[]
-  const fileRows = db
-    .prepare(`SELECT * FROM files WHERE deleted_at IS NULL`)
-    .all() as FileRow[]
 
-  const dbFolderPaths = new Map(folderRows.map((r) => [r.abs_path, r]))
-  const dbFilePaths = new Map(fileRows.map((r) => [r.abs_path, r]))
+  // Load *all* rows including soft-deleted ones — abs_path has a UNIQUE
+  // index across the whole table, so an INSERT for a path owned by a
+  // tombstoned row would violate it. We resurrect those rows instead.
+  const allFolderRows = db
+    .prepare(`SELECT * FROM folders WHERE workspace_id = ?`)
+    .all("default") as FolderRow[]
+  const allFileRows = db
+    .prepare(`SELECT * FROM files`)
+    .all() as FileRow[]
+  const activeFolderRows = allFolderRows.filter((r) => r.deleted_at === null)
+  const activeFileRows = allFileRows.filter((r) => r.deleted_at === null)
+
+  const dbFolderPaths = new Map(allFolderRows.map((r) => [r.abs_path, r]))
+  const dbFilePaths = new Map(allFileRows.map((r) => [r.abs_path, r]))
 
   // Sort dirs by depth so parents are inserted before children.
   onDisk.dirs.sort((a, b) => a.split(path.sep).length - b.split(path.sep).length)
 
   const tx = db.transaction(() => {
     for (const dirPath of onDisk.dirs) {
-      if (dbFolderPaths.has(dirPath)) continue
+      const existing = dbFolderPaths.get(dirPath)
+      if (existing) {
+        // Path is already known. If it was tombstoned, the user recreated
+        // a folder we previously trashed — restore the row instead of
+        // inserting a duplicate.
+        if (existing.deleted_at !== null) {
+          q.restoreFolderRow.run(existing.id)
+          existing.deleted_at = null
+        }
+        continue
+      }
       const parentRow = findParentFolder(dirPath, libraryRoot, q)
       const id = uuid()
       q.insertFolder.run({
@@ -45,11 +63,19 @@ export async function reconcileLibrary(deps: ReconcileDeps): Promise<void> {
       dbFolderPaths.set(dirPath, {
         id,
         abs_path: dirPath,
+        deleted_at: null,
       } as FolderRow)
     }
 
     for (const filePath of onDisk.files) {
-      if (dbFilePaths.has(filePath)) continue
+      const existingFile = dbFilePaths.get(filePath)
+      if (existingFile) {
+        if (existingFile.deleted_at !== null) {
+          q.restoreFileRow.run(existingFile.id)
+          existingFile.deleted_at = null
+        }
+        continue
+      }
       const dir = path.dirname(filePath)
       const parent =
         dbFolderPaths.get(dir) ?? q.getFolderByPath(dir)
@@ -84,13 +110,15 @@ export async function reconcileLibrary(deps: ReconcileDeps): Promise<void> {
       })
     }
 
-    for (const row of folderRows) {
+    // Tombstone rows whose disk entry vanished. Only walk the previously
+    // active rows so we don't re-soft-delete already-deleted ones.
+    for (const row of activeFolderRows) {
       if (!fs.existsSync(row.abs_path)) {
         q.softDeleteFolder.run(row.id)
       }
     }
 
-    for (const row of fileRows) {
+    for (const row of activeFileRows) {
       if (!fs.existsSync(row.abs_path)) {
         q.softDeleteFile.run(row.id)
       }
