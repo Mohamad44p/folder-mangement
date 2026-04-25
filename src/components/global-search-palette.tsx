@@ -26,15 +26,38 @@ interface ParsedQuery {
   types: string[]
   sizeGt?: number
   sizeLt?: number
+  sizeEq?: number
+  before?: string             // ISO YYYY-MM-DD (exclusive upper bound)
+  after?: string              // ISO YYYY-MM-DD (exclusive lower bound)
+  nameContains?: string
   favOnly?: boolean
 }
 
 function parseQuery(raw: string): ParsedQuery {
   const out: ParsedQuery = { text: "", tags: [], types: [] }
-  const tokens = raw.split(/\s+/).filter(Boolean)
+  // Tokenize, preserving "double-quoted multi-word values".
+  const tokens: string[] = []
+  let buf = ""
+  let quoted = false
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i]
+    if (ch === '"') {
+      quoted = !quoted
+      continue
+    }
+    if (!quoted && /\s/.test(ch)) {
+      if (buf) tokens.push(buf)
+      buf = ""
+      continue
+    }
+    buf += ch
+  }
+  if (buf) tokens.push(buf)
+
   const remaining: string[] = []
   for (const tok of tokens) {
-    if (tok === "fav" || tok === "favorite") {
+    const lower = tok.toLowerCase()
+    if (lower === "fav" || lower === "favorite") {
       out.favOnly = true
       continue
     }
@@ -42,7 +65,7 @@ function parseQuery(raw: string): ParsedQuery {
     if (m) {
       const key = m[1].toLowerCase()
       const val = m[2]
-      if (key === "tag") {
+      if (key === "tag" || key === "tags") {
         out.tags.push(val.toLowerCase())
         continue
       }
@@ -50,15 +73,37 @@ function parseQuery(raw: string): ParsedQuery {
         out.types.push(val.toLowerCase())
         continue
       }
+      if (key === "name") {
+        out.nameContains = val.toLowerCase()
+        continue
+      }
+      if (key === "before") {
+        const d = normalizeDate(val)
+        if (d) out.before = d
+        continue
+      }
+      if (key === "after") {
+        const d = normalizeDate(val)
+        if (d) out.after = d
+        continue
+      }
       if (key === "size") {
-        const sm = /^([<>])?(\d+(?:\.\d+)?)(kb|mb|b)?$/i.exec(val)
+        const sm = /^(>=|<=|>|<|=)?(\d+(?:\.\d+)?)(kb|mb|gb|b)?$/i.exec(val)
         if (sm) {
           const op = sm[1] ?? ">"
           const num = parseFloat(sm[2])
           const unit = (sm[3] ?? "b").toLowerCase()
-          const bytes = unit === "mb" ? num * 1024 * 1024 : unit === "kb" ? num * 1024 : num
-          if (op === ">") out.sizeGt = bytes
-          else out.sizeLt = bytes
+          const bytes =
+            unit === "gb"
+              ? num * 1024 * 1024 * 1024
+              : unit === "mb"
+              ? num * 1024 * 1024
+              : unit === "kb"
+              ? num * 1024
+              : num
+          if (op === ">" || op === ">=") out.sizeGt = bytes
+          else if (op === "<" || op === "<=") out.sizeLt = bytes
+          else out.sizeEq = bytes
           continue
         }
       }
@@ -67,6 +112,13 @@ function parseQuery(raw: string): ParsedQuery {
   }
   out.text = remaining.join(" ").toLowerCase()
   return out
+}
+
+function normalizeDate(input: string): string | null {
+  const s = input.replace(/\//g, "-")
+  if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  return null
 }
 
 function highlight(text: string, q: string): ReactNode {
@@ -119,6 +171,9 @@ export function GlobalSearchPalette() {
     { token: "palette.token.type", desc: "palette.token.typeDesc" },
     { token: "palette.token.size", desc: "palette.token.sizeDesc" },
     { token: "palette.token.sizeLt", desc: "palette.token.sizeLtDesc" },
+    { token: "palette.token.before", desc: "palette.token.beforeDesc" },
+    { token: "palette.token.after", desc: "palette.token.afterDesc" },
+    { token: "palette.token.name", desc: "palette.token.nameDesc" },
     { token: "palette.token.fav", desc: "palette.token.favDesc" },
   ]
 
@@ -126,16 +181,21 @@ export function GlobalSearchPalette() {
 
   const results: SearchHit[] = useMemo(() => {
     const hasFilters =
-      parsed.text || parsed.tags.length || parsed.types.length || parsed.sizeGt || parsed.sizeLt || parsed.favOnly
+      parsed.text ||
+      parsed.tags.length ||
+      parsed.types.length ||
+      parsed.sizeGt ||
+      parsed.sizeLt ||
+      parsed.sizeEq ||
+      parsed.before ||
+      parsed.after ||
+      parsed.nameContains ||
+      parsed.favOnly
     if (!hasFilters) return []
     const hits: SearchHit[] = []
     for (const f of folders) {
       if (f.deletedAt) continue
-      const path = buildPathTitles(String(f.id)).map((title, idx) => {
-        // path[idx] corresponds to navigation entry idx; we don't have ids,
-        // so just localize standalone titles as best-effort.
-        return title
-      })
+      const path = buildPathTitles(String(f.id)).map((title) => title)
 
       // Folder-level matching
       const folderMatches =
@@ -145,7 +205,17 @@ export function GlobalSearchPalette() {
         (parsed.tags.length > 0 &&
           parsed.tags.every((tg) => (f.tags ?? []).map((x) => x.toLowerCase()).includes(tg)))
 
-      if (folderMatches && parsed.types.length === 0 && !parsed.sizeGt && !parsed.sizeLt && !parsed.favOnly) {
+      const fileOnlyFilters =
+        parsed.types.length > 0 ||
+        !!parsed.sizeGt ||
+        !!parsed.sizeLt ||
+        !!parsed.sizeEq ||
+        !!parsed.before ||
+        !!parsed.after ||
+        !!parsed.nameContains ||
+        !!parsed.favOnly
+
+      if (folderMatches && !fileOnlyFilters) {
         hits.push({
           kind: "folder",
           folderId: String(f.id),
@@ -157,12 +227,13 @@ export function GlobalSearchPalette() {
       }
 
       for (const file of f.files ?? []) {
-        // text match
+        // text match (also searches caption + ocrText now)
         if (parsed.text) {
           const inName = file.name.toLowerCase().includes(parsed.text)
           const inTags = (file.tags ?? []).some((tg) => tg.toLowerCase().includes(parsed.text))
           const inDesc = (file.description ?? "").toLowerCase().includes(parsed.text)
-          if (!inName && !inTags && !inDesc) continue
+          const inOcr = (file.ocrText ?? "").toLowerCase().includes(parsed.text)
+          if (!inName && !inTags && !inDesc && !inOcr) continue
         }
         if (parsed.types.length > 0 && !parsed.types.includes(file.type)) continue
         if (parsed.tags.length > 0) {
@@ -171,6 +242,10 @@ export function GlobalSearchPalette() {
         }
         if (typeof parsed.sizeGt === "number" && (file.size ?? 0) <= parsed.sizeGt) continue
         if (typeof parsed.sizeLt === "number" && (file.size ?? Infinity) >= parsed.sizeLt) continue
+        if (typeof parsed.sizeEq === "number" && file.size !== parsed.sizeEq) continue
+        if (parsed.before && file.uploadedAt && file.uploadedAt >= parsed.before + "T00:00:00") continue
+        if (parsed.after && file.uploadedAt && file.uploadedAt <= parsed.after + "T23:59:59") continue
+        if (parsed.nameContains && !file.name.toLowerCase().includes(parsed.nameContains)) continue
         if (parsed.favOnly && !file.favorite) continue
 
         hits.push({
