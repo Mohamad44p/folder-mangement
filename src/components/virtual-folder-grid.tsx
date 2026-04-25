@@ -33,16 +33,18 @@ function CardDndWrapper({
     onDropItem: (item) => {
       if (item.kind === "file") {
         moveFile(item.folderId, item.fileId, id)
-        toast.success("File moved")
+        toast.success(t("toast.fileMoved"))
       } else if (item.kind === "folder" && item.folderId !== id) {
         moveFolder(item.folderId, id)
-        toast.success("Folder nested")
+        toast.success(t("toast.folderNested"))
       }
     },
     onDropFiles: (files) => {
       uploadFiles(id, files)
       toast.success(
-        files.length === 1 ? `Uploading ${files[0].name}` : `Uploading ${files.length} files`,
+        files.length === 1
+          ? t("toast.uploadingOne", { name: files[0].name })
+          : t("toast.uploadingN", { n: files.length }),
       )
     },
     canDrop: (item) => (item.kind === "folder" ? item.folderId !== id : true),

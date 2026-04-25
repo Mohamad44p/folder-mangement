@@ -147,10 +147,10 @@ function TreeItem({
     onDropItem: (item) => {
       if (item.kind === "file") {
         moveFile(item.folderId, item.fileId, id)
-        toast.success("File moved")
+        toast.success(t("toast.fileMoved"))
       } else if (item.kind === "folder" && item.folderId !== id) {
         moveFolder(item.folderId, id)
-        toast.success("Folder nested")
+        toast.success(t("toast.folderNested"))
       }
     },
     canDrop: (item) => (item.kind === "folder" ? item.folderId !== id : true),
@@ -373,8 +373,8 @@ export function FolderSidebar() {
           trigger={
             <button
               className="size-7 flex items-center justify-center rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
-              aria-label="Settings"
-              title="Theme & density"
+              aria-label={t("aria.settings")}
+              title={t("aria.themeAndDensity")}
             >
               <Settings className="size-3.5" />
             </button>
@@ -383,8 +383,8 @@ export function FolderSidebar() {
         <button
           onClick={() => setSidebarOpen(false)}
           className="size-7 flex items-center justify-center rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
-          aria-label="Close sidebar"
-          title="Close sidebar"
+          aria-label={t("aria.closeSidebar")}
+          title={t("aria.closeSidebar")}
         >
           <PanelLeftClose className="size-3.5" />
         </button>
@@ -422,8 +422,8 @@ export function FolderSidebar() {
                 <button
                   onClick={() => setSmartFolderEditor({ mode: "new" })}
                   className="size-4 flex items-center justify-center rounded hover:bg-white/[0.08] text-white/40 hover:text-white transition-colors"
-                  title="New smart folder"
-                  aria-label="New smart folder"
+                  title={t("aria.newSmartFolder")}
+                  aria-label={t("aria.newSmartFolder")}
                 >
                   <Plus className="size-3" />
                 </button>
@@ -434,7 +434,7 @@ export function FolderSidebar() {
                 onClick={() => setSmartFolderEditor({ mode: "new" })}
                 className="w-full text-left px-2 py-1.5 rounded-md text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.03] transition-colors"
               >
-                + Create your first smart folder
+                {t("smart.firstCreate")}
               </button>
             ) : (
               <div className="space-y-px">
@@ -454,18 +454,18 @@ export function FolderSidebar() {
                     <button
                       onClick={() => setSmartFolderEditor({ mode: "edit", id: s.id })}
                       className="opacity-0 group-hover:opacity-100 size-6 flex items-center justify-center rounded text-white/40 hover:text-white hover:bg-white/[0.06] transition-all"
-                      title="Edit"
-                      aria-label="Edit smart folder"
+                      title={t("aria.editShort")}
+                      aria-label={t("aria.editSmartFolder")}
                     >
                       <Pencil className="size-3" />
                     </button>
                     <button
                       onClick={() => {
                         deleteSmartFolder(s.id)
-                        toast.success("Smart folder deleted")
+                        toast.success(t("toast.smartFolderDeleted"))
                       }}
                       className="opacity-0 group-hover:opacity-100 size-6 flex items-center justify-center rounded text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                      aria-label="Delete smart folder"
+                      aria-label={t("aria.deleteSmartFolder")}
                     >
                       <X className="size-3" />
                     </button>
@@ -500,10 +500,10 @@ export function FolderSidebar() {
                     <button
                       onClick={() => {
                         deleteSavedSearch(s.id)
-                        toast.success("Removed")
+                        toast.success(t("toast.savedSearchRemoved"))
                       }}
                       className="opacity-0 group-hover:opacity-100 size-6 flex items-center justify-center rounded text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                      aria-label="Remove saved search"
+                      aria-label={t("aria.removeSavedSearch")}
                     >
                       <X className="size-3" />
                     </button>

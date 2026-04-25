@@ -140,14 +140,14 @@ export function ImageLightbox() {
       if (hex) {
         try {
           await navigator.clipboard.writeText(hex)
-          toast.success(`Picked ${hex} (copied)`)
+          toast.success(t("toast.colorPickedCopied", { hex }))
         } catch {
-          toast.success(`Picked ${hex}`)
+          toast.success(t("toast.colorPicked", { hex }))
         }
       }
       setEyedropperOn(false)
     },
-    [eyedropperOn, current],
+    [eyedropperOn, current, t],
   )
 
   const handleDownload = () => {

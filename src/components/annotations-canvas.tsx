@@ -179,21 +179,28 @@ export function AnnotationsCanvas({
         <button
           onClick={() => onToggleVisible(!visible)}
           className="size-7 flex items-center justify-center rounded-full text-white/60 hover:text-white hover:bg-white/[0.1]"
-          title={visible ? "Hide annotations" : "Show annotations"}
+          title={visible ? t("annotations.hide") : t("annotations.show")}
         >
           {visible ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
         </button>
         <span className="w-px h-4 bg-white/10 mx-0.5" />
-        {(["rect", "circle", "arrow", "text"] as const).map((t) => {
-          const Icon = t === "rect" ? SquareIcon : t === "circle" ? CircleIcon : t === "arrow" ? ArrowRight : Type
+        {(["rect", "circle", "arrow", "text"] as const).map((toolKind) => {
+          const Icon =
+            toolKind === "rect"
+              ? SquareIcon
+              : toolKind === "circle"
+                ? CircleIcon
+                : toolKind === "arrow"
+                  ? ArrowRight
+                  : Type
           return (
             <button
-              key={t}
-              onClick={() => setTool(tool === t ? null : t)}
+              key={toolKind}
+              onClick={() => setTool(tool === toolKind ? null : toolKind)}
               className={`size-7 flex items-center justify-center rounded-full ${
-                tool === t ? "bg-white/[0.15] text-white" : "text-white/60 hover:text-white hover:bg-white/[0.1]"
+                tool === toolKind ? "bg-white/[0.15] text-white" : "text-white/60 hover:text-white hover:bg-white/[0.1]"
               }`}
-              title={t}
+              title={t(`annotations.tools.${toolKind}` as const)}
             >
               <Icon className="size-3.5" />
             </button>
@@ -217,7 +224,7 @@ export function AnnotationsCanvas({
               className="px-2 h-7 rounded-full text-[11px] text-white/60 hover:text-red-400 hover:bg-red-500/10 flex items-center gap-1"
             >
               <Trash2 className="size-3" />
-              Clear
+              {t("annotations.clear")}
             </button>
           </>
         )}

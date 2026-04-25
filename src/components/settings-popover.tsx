@@ -103,6 +103,7 @@ export function SettingsPopover({ trigger }: { trigger?: ReactNode }) {
             <div className="grid grid-cols-7 gap-1.5">
               {ACCENT_OPTIONS.map((o) => {
                 const active = accent === o.value
+                const localizedName = t(`accentName.${o.id}` as const)
                 return (
                   <button
                     key={o.id}
@@ -111,8 +112,8 @@ export function SettingsPopover({ trigger }: { trigger?: ReactNode }) {
                       active ? "ring-2 ring-white scale-110" : "hover:scale-105"
                     }`}
                     style={{ backgroundColor: o.value }}
-                    title={o.label}
-                    aria-label={`Accent ${o.label}`}
+                    title={localizedName}
+                    aria-label={t("aria.accent", { label: localizedName })}
                   >
                     {active && <Check className="size-3 text-black" />}
                   </button>

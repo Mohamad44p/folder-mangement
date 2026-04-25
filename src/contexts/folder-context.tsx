@@ -43,6 +43,7 @@ import {
 import { library } from "@/lib/library"
 import { applyPattern } from "@/lib/rename-pattern"
 import { toast } from "sonner"
+import { useT } from "@/contexts/i18n-context"
 
 function isElectronEnv(): boolean {
   return typeof window !== "undefined" && !!window.api?.library
@@ -387,6 +388,7 @@ function makeActivity(kind: ActivityKind, description: string, actor = "You"): A
 }
 
 export function FolderProvider({ children }: { children: ReactNode }) {
+  const { t } = useT()
   const [folders, setFolders] = useState<FolderWithMeta[]>(() => seedWithDefaults(seedProjects))
   const [hydrated, setHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -851,9 +853,9 @@ export function FolderProvider({ children }: { children: ReactNode }) {
           console.error("library.deleteFolder failed:", err)
         })
       }
-      toast(`"${title}" moved to trash`, {
+      toast(t("toast.movedToTrashTitled", { title }), {
         action: {
-          label: "Undo",
+          label: t("action.undo"),
           onClick: () => {
             restoreFolder(id)
           },
@@ -864,7 +866,7 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     // restoreFolder is defined just below — referenced via closure that
     // captures the latest definition at call-time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [t],
   )
 
   const permanentlyDeleteFolder = useCallback((id: string) => {
@@ -1250,9 +1252,9 @@ export function FolderProvider({ children }: { children: ReactNode }) {
           .delete(folderId, fileId)
           .catch(persistErr("library.files.delete"))
       }
-      toast(`"${displayName}" moved to trash`, {
+      toast(t("toast.movedToTrashTitled", { title: displayName }), {
         action: {
-          label: "Undo",
+          label: t("action.undo"),
           onClick: () => {
             if (captured) restoreFile(folderId, captured)
           },
@@ -1263,7 +1265,7 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     // restoreFile is defined just below — referenced via closure that
     // captures the latest definition at call-time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [t],
   )
 
   const restoreFile = useCallback((folderId: string, file: FolderFile) => {

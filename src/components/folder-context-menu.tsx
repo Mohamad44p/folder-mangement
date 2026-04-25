@@ -92,7 +92,11 @@ export function FolderContextMenu({
                 toast.success(t("ctx.aiRanOn"))
                 return
               }
-              const tid = toast.loading(`Tagging ${untagged.length} image${untagged.length === 1 ? "" : "s"}…`)
+              const tid = toast.loading(
+                untagged.length === 1
+                  ? t("toast.taggingImageOne")
+                  : t("toast.taggingImageN", { n: untagged.length }),
+              )
               void Promise.allSettled(
                 untagged.map((file) =>
                   library.ai.autoTag(file.id).then((res) => {
@@ -103,12 +107,22 @@ export function FolderContextMenu({
                 const ok = results.filter((r) => r.status === "fulfilled").length
                 const failed = results.length - ok
                 toast.dismiss(tid)
-                if (ok > 0) toast.success(`Tagged ${ok} image${ok === 1 ? "" : "s"}`)
+                if (ok > 0)
+                  toast.success(
+                    ok === 1
+                      ? t("toast.taggedImageOne")
+                      : t("toast.taggedImageN", { n: ok }),
+                  )
                 if (failed > 0) {
                   const firstErr = (results.find((r) => r.status === "rejected") as
                     | PromiseRejectedResult
                     | undefined)?.reason
-                  toast.error(`${failed} failed: ${(firstErr as Error)?.message ?? "no AI key set?"}`)
+                  toast.error(
+                    t("toast.tagFailed", {
+                      n: failed,
+                      error: (firstErr as Error)?.message ?? t("toast.aiNoKey"),
+                    }),
+                  )
                 }
               })
             }}

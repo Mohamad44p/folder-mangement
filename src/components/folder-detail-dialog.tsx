@@ -839,7 +839,7 @@ export function FolderDetailDialog() {
                           toast.dismiss(tid)
                           // Local description already saved; surface the
                           // provider error but don't block the UX.
-                          toast.message((err as Error).message ?? "no AI key set?")
+                          toast.message((err as Error).message ?? t("toast.aiNoKey"))
                         })
                     }}
                     icon={<Wand2 className="size-3.5" />}
@@ -1437,10 +1437,10 @@ export function FolderDetailDialog() {
                                           onClick={(e) => {
                                             e.stopPropagation()
                                             if (file.type !== "image") {
-                                              toast.message("AI tagging is image-only for now")
+                                              toast.message(t("toast.aiOnlyImages"))
                                               return
                                             }
-                                            const tid = toast.loading("Tagging…")
+                                            const tid = toast.loading(t("toast.taggingShort"))
                                             void Promise.allSettled([
                                               library.ai.autoTag(file.id),
                                               library.ai.ocr(file.id),
@@ -1463,7 +1463,7 @@ export function FolderDetailDialog() {
                                               } else {
                                                 toast.error(
                                                   (tagsRes.reason as Error)?.message ??
-                                                    "no AI key set?",
+                                                    t("toast.aiNoKey"),
                                                 )
                                               }
                                               if (ocrRes.status === "fulfilled") {

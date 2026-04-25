@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
 import { library } from "@/lib/library"
+import { useT } from "@/contexts/i18n-context"
 
 interface Props {
   onConfirmed: (libraryPath: string) => void
 }
 
 export function LibraryPicker({ onConfirmed }: Props) {
+  const { t } = useT()
   const [defaultPath, setDefaultPath] = useState<string>("")
   const [chosen, setChosen] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
@@ -34,13 +36,12 @@ export function LibraryPicker({ onConfirmed }: Props) {
   return (
     <div className="min-h-screen bg-[#191919] flex items-center justify-center p-6">
       <div className="max-w-md w-full rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-6">
-        <h1 className="text-xl font-semibold text-white mb-2">Welcome to Folders</h1>
+        <h1 className="text-xl font-semibold text-white mb-2">{t("library.welcomeTitle")}</h1>
         <p className="text-sm text-white/60 mb-6">
-          Choose where your library lives on disk. Folders and files you create will be
-          saved here as real files you can open in Explorer or Finder.
+          {t("library.welcomeBody")}
         </p>
         <label className="block text-xs uppercase tracking-wide text-white/40 mb-2">
-          Library location
+          {t("library.location")}
         </label>
         <input
           type="text"
@@ -56,7 +57,7 @@ export function LibraryPicker({ onConfirmed }: Props) {
             onClick={() => setChosen(defaultPath)}
             className="mt-2 text-[12px] text-white/40 hover:text-white/70"
           >
-            Reset to default
+            {t("library.resetDefault")}
           </button>
         )}
         {error && <p className="mt-3 text-[12px] text-red-400">{error}</p>}
@@ -66,7 +67,7 @@ export function LibraryPicker({ onConfirmed }: Props) {
           onClick={handleConfirm}
           className="mt-6 w-full rounded-full bg-white text-black text-sm font-medium py-2 hover:bg-white/90 disabled:opacity-50"
         >
-          {submitting ? "Setting up…" : "Continue"}
+          {submitting ? t("library.settingUp") : t("library.continue")}
         </button>
       </div>
     </div>

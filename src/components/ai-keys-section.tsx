@@ -2,16 +2,19 @@ import { useEffect, useState } from "react"
 import { Sparkles, Eye, EyeOff, Check, Trash2 } from "lucide-react"
 import { library } from "@/lib/library"
 import type { AiProvider } from "@/lib/library/types"
+import { useT } from "@/contexts/i18n-context"
 
 interface ProviderInfo {
   id: AiProvider
+  // Brand names (OpenRouter, Anthropic, OpenAI) stay as-is across languages.
   label: string
   placeholder: string
   helpUrl: string
 }
 
 interface ProviderInfoExtended extends ProviderInfo {
-  hint?: string
+  // Hint that lives next to the brand name — translated via dictionary key.
+  hintKey?: "aiKeys.openRouterHint"
 }
 
 const PROVIDERS: ProviderInfoExtended[] = [
@@ -20,7 +23,7 @@ const PROVIDERS: ProviderInfoExtended[] = [
     label: "OpenRouter",
     placeholder: "sk-or-...",
     helpUrl: "https://openrouter.ai/keys",
-    hint: "One key, all models (OpenAI, Anthropic, Google, Meta, …)",
+    hintKey: "aiKeys.openRouterHint",
   },
   {
     id: "anthropic",
@@ -38,8 +41,9 @@ const PROVIDERS: ProviderInfoExtended[] = [
 
 type PreferredOption = "auto" | AiProvider
 
+// "Auto" is the only label that needs translating — brand names stay literal.
 const PREFERRED_OPTIONS: { id: PreferredOption; label: string }[] = [
-  { id: "auto", label: "Auto" },
+  { id: "auto", label: "" },
   { id: "anthropic", label: "Anthropic" },
   { id: "openai", label: "OpenAI" },
   { id: "openrouter", label: "OpenRouter" },
@@ -53,6 +57,7 @@ interface KeyState {
 }
 
 export function AiKeysSection() {
+  const { t } = useT()
   const [state, setState] = useState<Record<AiProvider, KeyState>>({
     openrouter: { has: false, value: "", showing: false, saving: false },
     anthropic: { has: false, value: "", showing: false, saving: false },
@@ -135,19 +140,20 @@ export function AiKeysSection() {
     <div>
       <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2 flex items-center gap-1.5">
         <Sparkles className="size-3" />
-        AI provider keys
+        {t("aiKeys.title")}
       </div>
 
       {hasAnyKey && (
         <div className="mb-3 rounded-md border border-white/[0.06] p-2">
           <div className="text-[11px] text-white/60 mb-1.5">
-            Use for auto-tag &amp; caption
+            {t("aiKeys.useFor")}
           </div>
           <div className="flex flex-wrap gap-1">
             {PREFERRED_OPTIONS.map((opt) => {
               const active = preferred === opt.id
               const disabled =
                 opt.id !== "auto" && !state[opt.id as AiProvider].has
+              const visibleLabel = opt.id === "auto" ? t("aiKeys.optAuto") : opt.label
               return (
                 <button
                   key={opt.id}
@@ -166,13 +172,13 @@ export function AiKeysSection() {
                   }
                   title={
                     disabled
-                      ? `Add a ${opt.label} key below to enable`
+                      ? t("aiKeys.preferAddKeyHint", { provider: visibleLabel })
                       : opt.id === "auto"
-                        ? "First available provider in the order Anthropic → OpenAI → OpenRouter"
+                        ? t("aiKeys.preferAutoHint")
                         : undefined
                   }
                 >
-                  {opt.label}
+                  {visibleLabel}
                 </button>
               )
             })}
@@ -188,15 +194,15 @@ export function AiKeysSection() {
               <div className="flex items-center justify-between mb-1.5">
                 <div className="min-w-0">
                   <span className="text-[12px] text-white/80">{p.label}</span>
-                  {p.hint && (
+                  {p.hintKey && (
                     <p className="text-[10px] text-white/40 leading-tight truncate">
-                      {p.hint}
+                      {t(p.hintKey)}
                     </p>
                   )}
                 </div>
                 {s.has ? (
                   <span className="flex items-center gap-1 text-[10px] text-emerald-400 shrink-0">
-                    <Check className="size-3" /> stored
+                    <Check className="size-3" /> {t("aiKeys.stored")}
                   </span>
                 ) : (
                   <a
@@ -205,7 +211,7 @@ export function AiKeysSection() {
                     rel="noopener noreferrer"
                     className="text-[10px] text-white/40 hover:text-white/70 underline shrink-0"
                   >
-                    get a key
+                    {t("aiKeys.getKey")}
                   </a>
                 )}
               </div>
@@ -233,7 +239,7 @@ export function AiKeysSection() {
                     }))
                   }
                   className="size-7 flex items-center justify-center rounded text-white/50 hover:text-white hover:bg-white/[0.06]"
-                  aria-label={s.showing ? "Hide" : "Show"}
+                  aria-label={s.showing ? t("aria.hide") : t("aria.show")}
                 >
                   {s.showing ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
                 </button>
@@ -243,7 +249,7 @@ export function AiKeysSection() {
                   onClick={() => save(p.id)}
                   className="px-2 h-7 rounded text-[11px] bg-white text-black disabled:opacity-30 hover:bg-white/90"
                 >
-                  Save
+                  {t("aiKeys.save")}
                 </button>
                 {s.has && (
                   <button
@@ -251,7 +257,7 @@ export function AiKeysSection() {
                     disabled={s.saving}
                     onClick={() => remove(p.id)}
                     className="size-7 flex items-center justify-center rounded text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-                    aria-label="Remove key"
+                    aria-label={t("aiKeys.removeKey")}
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -261,8 +267,7 @@ export function AiKeysSection() {
           )
         })}
         <p className="text-[10px] text-white/40 leading-snug">
-          Keys are stored locally and encrypted via your OS keychain. They never leave
-          your device except as direct calls to the chosen provider.
+          {t("aiKeys.encryptedNote")}
         </p>
       </div>
     </div>

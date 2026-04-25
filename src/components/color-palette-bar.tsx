@@ -3,6 +3,7 @@
 import { Check } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
+import { useT } from "@/contexts/i18n-context"
 
 interface ColorPaletteBarProps {
   palette: string[] | undefined
@@ -12,6 +13,7 @@ interface ColorPaletteBarProps {
 
 export function ColorPaletteBar({ palette, onPick, size = "sm" }: ColorPaletteBarProps) {
   const [copied, setCopied] = useState<string | null>(null)
+  const { t } = useT()
   if (!palette || palette.length === 0) return null
   const swatchSize = size === "md" ? "size-6" : "size-3"
   return (
@@ -27,7 +29,7 @@ export function ColorPaletteBar({ palette, onPick, size = "sm" }: ColorPaletteBa
             }
             try {
               navigator.clipboard.writeText(c)
-              toast.success(`Copied ${c}`)
+              toast.success(t("toast.colorCopied", { color: c }))
               setCopied(c)
               setTimeout(() => setCopied(null), 1500)
             } catch {}
