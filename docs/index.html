@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Folders — Local-first folder management for Mac and Windows</title>
+<meta name="description" content="A local-first desktop app for organizing your folders, files, tags, comments, and AI captions. Free download for macOS and Windows." />
+<meta property="og:title" content="Folders — Local-first folder management" />
+<meta property="og:description" content="A local-first desktop app for organizing your folders. Free for macOS and Windows." />
+<meta property="og:image" content="icon.png" />
+<meta property="og:type" content="website" />
+<link rel="icon" type="image/png" href="icon.png" />
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-2: #1c1c1c;
+    --text: #f5f5f5;
+    --muted: #888;
+    --accent: #fdcd3a;
+    --accent-hover: #ffd95c;
+    --accent-text: #1a1a1a;
+    --border: #242424;
+    --radius: 14px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image: radial-gradient(
+      ellipse at top,
+      rgba(253, 205, 58, 0.08) 0%,
+      transparent 50%
+    );
+    background-attachment: fixed;
+  }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 80px 24px 48px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 80px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .brand img { width: 28px; height: 28px; }
+
+  .nav-link {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.15s;
+  }
+  .nav-link:hover { color: var(--text); }
+
+  .hero {
+    text-align: center;
+    padding: 24px 0 56px;
+  }
+
+  .hero img.mascot {
+    width: 128px;
+    height: 128px;
+    margin-bottom: 32px;
+    filter: drop-shadow(0 12px 32px rgba(253, 205, 58, 0.25));
+  }
+
+  h1 {
+    font-size: clamp(36px, 6vw, 56px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+
+  .tagline {
+    font-size: clamp(16px, 2vw, 19px);
+    color: var(--muted);
+    max-width: 540px;
+    margin: 0 auto 40px;
+  }
+
+  .download-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--accent);
+    color: var(--accent-text);
+    padding: 16px 32px;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 17px;
+    transition: transform 0.12s, background 0.15s, box-shadow 0.15s;
+    box-shadow: 0 8px 24px rgba(253, 205, 58, 0.2);
+    border: none;
+    cursor: pointer;
+  }
+  .btn-download:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 32px rgba(253, 205, 58, 0.28);
+  }
+  .btn-download:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-download svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .meta {
+    color: var(--muted);
+    font-size: 13px;
+    min-height: 20px;
+  }
+  .meta a {
+    color: var(--muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .meta a:hover { color: var(--text); }
+
+  .alt-downloads {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .alt-downloads a {
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .alt-downloads a:hover {
+    color: var(--text);
+    border-color: #333;
+    background: var(--surface-2);
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 64px 0;
+  }
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .feature h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .feature p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  footer {
+    text-align: center;
+    padding-top: 48px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  footer a {
+    color: var(--muted);
+    text-decoration: none;
+    margin: 0 12px;
+    transition: color 0.15s;
+  }
+  footer a:hover { color: var(--text); }
+
+  @media (max-width: 600px) {
+    .container { padding: 40px 20px 32px; }
+    header { margin-bottom: 40px; }
+    .hero { padding: 0 0 32px; }
+    .hero img.mascot { width: 96px; height: 96px; margin-bottom: 24px; }
+    .features { margin: 40px 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <img src="icon.png" alt="" />
+        <span>Folders</span>
+      </div>
+      <a class="nav-link" href="https://github.com/Mohamad44p/folder-mangement" target="_blank" rel="noopener">GitHub</a>
+    </header>
+
+    <main>
+      <section class="hero">
+        <img class="mascot" src="icon.png" alt="Folders mascot" />
+        <h1>Local-first folder management</h1>
+        <p class="tagline">
+          Organize your files, tags, comments, and AI captions on your own machine.
+          No cloud, no accounts, no tracking.
+        </p>
+
+        <div class="download-section">
+          <a id="download" class="btn-download" href="#" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span id="download-label">Loading…</span>
+          </a>
+          <div class="meta" id="meta">Detecting your platform…</div>
+          <div class="alt-downloads" id="alt-downloads"></div>
+        </div>
+      </section>
+
+      <section class="features">
+        <div class="feature">
+          <h3>Local SQLite</h3>
+          <p>All metadata lives in a single SQLite database under your library folder. Inspect it, back it up, sync it.</p>
+        </div>
+        <div class="feature">
+          <h3>BYOK AI</h3>
+          <p>Plug in your own OpenAI, Anthropic, or OpenRouter key. Auto-tag, caption, and OCR your images locally.</p>
+        </div>
+        <div class="feature">
+          <h3>Real filesystem</h3>
+          <p>Files stay on disk in plain folders — no proprietary format. Open, move, or delete them outside the app.</p>
+        </div>
+        <div class="feature">
+          <h3>Auto-update</h3>
+          <p>Built-in updater pulls the latest version from GitHub Releases. Install once, stay current.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a href="https://github.com/Mohamad44p/folder-mangement" target="_blank" rel="noopener">Source</a>
+      <a href="https://github.com/Mohamad44p/folder-mangement/releases" target="_blank" rel="noopener">All releases</a>
+      <a href="https://github.com/Mohamad44p/folder-mangement/issues" target="_blank" rel="noopener">Issues</a>
+    </footer>
+  </div>
+
+<script>
+  const REPO = "Mohamad44p/folder-mangement"
+  const RELEASES_URL = `https://github.com/${REPO}/releases`
+  const CACHE_KEY = "folders.latestRelease"
+  const CACHE_TTL_MS = 5 * 60 * 1000
+
+  const PLATFORMS = {
+    "win-x64": { suffix: "win-x64.exe", label: "Windows (x64)" },
+    "win-arm64": { suffix: "win-arm64.exe", label: "Windows (ARM64)" },
+    "mac-arm64": { suffix: "mac-arm64.dmg", label: "macOS (Apple Silicon)" },
+    "mac-x64": { suffix: "mac-x64.dmg", label: "macOS (Intel)" },
+  }
+
+  function detectPlatform() {
+    const ua = navigator.userAgent
+    const platform = (navigator.userAgentData?.platform || navigator.platform || "").toLowerCase()
+    if (/windows/i.test(ua) || platform.includes("win")) {
+      return /arm/i.test(ua) ? "win-arm64" : "win-x64"
+    }
+    if (/macintosh|mac os x/i.test(ua) || platform.includes("mac")) {
+      return "mac-arm64"
+    }
+    return null
+  }
+
+  async function loadRelease() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null")
+      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+        return cached.data
+      }
+    } catch {}
+
+    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
+    if (!res.ok) throw new Error(`GitHub API ${res.status}`)
+    const data = await res.json()
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
+    } catch {}
+    return data
+  }
+
+  function findAsset(release, suffix) {
+    return release.assets?.find((a) => a.name.endsWith(suffix))
+  }
+
+  function formatBytes(n) {
+    if (!n) return ""
+    const mb = n / (1024 * 1024)
+    return mb >= 100 ? `${mb.toFixed(0)} MB` : `${mb.toFixed(1)} MB`
+  }
+
+  function setFallback(msg) {
+    const button = document.getElementById("download")
+    const label = document.getElementById("download-label")
+    const meta = document.getElementById("meta")
+    label.textContent = "View releases on GitHub"
+    button.href = RELEASES_URL
+    meta.textContent = msg
+  }
+
+  function renderAltDownloads(release, primaryKey) {
+    const container = document.getElementById("alt-downloads")
+    container.innerHTML = ""
+    for (const [key, p] of Object.entries(PLATFORMS)) {
+      if (key === primaryKey) continue
+      const asset = findAsset(release, p.suffix)
+      if (!asset) continue
+      const a = document.createElement("a")
+      a.href = asset.browser_download_url
+      a.textContent = p.label
+      a.rel = "noopener"
+      container.appendChild(a)
+    }
+  }
+
+  async function main() {
+    const button = document.getElementById("download")
+    const label = document.getElementById("download-label")
+    const meta = document.getElementById("meta")
+    const platformKey = detectPlatform()
+
+    let release
+    try {
+      release = await loadRelease()
+    } catch (err) {
+      console.error(err)
+      setFallback("Couldn't reach GitHub right now — head to the releases page.")
+      return
+    }
+
+    if (!platformKey) {
+      setFallback("Pick a platform below.")
+      renderAltDownloads(release, null)
+      return
+    }
+
+    const platform = PLATFORMS[platformKey]
+    const asset = findAsset(release, platform.suffix)
+
+    if (!asset) {
+      setFallback(`No ${platform.label} build in the latest release yet.`)
+      renderAltDownloads(release, null)
+      return
+    }
+
+    button.href = asset.browser_download_url
+    label.textContent = `Download for ${platform.label}`
+    const size = formatBytes(asset.size)
+    meta.innerHTML = `${release.tag_name}${size ? " · " + size : ""} · <a href="${RELEASES_URL}" rel="noopener">all releases</a>`
+    renderAltDownloads(release, platformKey)
+  }
+
+  main()
+</script>
+</body>
+</html>
