@@ -8,7 +8,10 @@
 /dist-renderer/
 /release/
 /out/
-/build/
+/build/*
+!/build/icon.png
+!/build/icon.icns
+!/build/icon.ico
 /.next/
 
 # debug
