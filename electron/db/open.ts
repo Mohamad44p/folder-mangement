@@ -40,14 +40,20 @@ export function openLibraryDb(libraryRoot: string): OpenedDb {
 
 function resolveSchemaPath(): string {
   const candidates = [
+    // Packaged build: extraResources copies schema.sql to resourcesPath
+    // (see electron-builder.yml). process.resourcesPath is undefined in
+    // raw Node so guard the access.
+    typeof process.resourcesPath === "string"
+      ? path.join(process.resourcesPath, "schema.sql")
+      : null,
     path.join(__dirname, "schema.sql"),
     path.join(__dirname, "..", "..", "electron", "db", "schema.sql"),
     path.join(process.cwd(), "electron", "db", "schema.sql"),
-  ]
+  ].filter((c): c is string => c !== null)
   for (const c of candidates) {
     if (fs.existsSync(c)) return c
   }
-  throw new Error("schema.sql not found in any candidate path")
+  throw new Error(`schema.sql not found in any candidate path: ${candidates.join(", ")}`)
 }
 
 function verifyIntegrity(db: Database.Database): void {

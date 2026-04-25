@@ -38,7 +38,6 @@ win:
         - x64
         - arm64
   icon: build/icon.ico
-  signAndEditExecutable: false
 
 nsis:
   oneClick: false
