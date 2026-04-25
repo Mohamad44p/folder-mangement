@@ -431,7 +431,11 @@ export function FolderProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = loadFolders()
     if (stored && stored.length > 0) {
-      setFolders(stored as FolderWithMeta[])
+      // Force-clear any leftover isGenerating flags from previous prototype
+      // runs so the fake "Setting up ~9s" animation never replays.
+      setFolders(
+        stored.map((p) => ({ ...p, isGenerating: false, progress: undefined })) as FolderWithMeta[],
+      )
     }
     // In Electron, the SQLite library is the source of truth — override
     // localStorage state once the async hydration finishes.

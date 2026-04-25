@@ -67,6 +67,7 @@ const en = {
   "sort.mostItems": "Most items",
 
   // Folder dialog
+  "folder.untitled": "New Folder",
   "folder.itemCount": "{count} items",
   "folder.itemCountOne": "{count} item",
   "folder.created": "Created {date}",
@@ -1122,6 +1123,7 @@ const ar: Record<keyof typeof en, string> = {
   "sort.mostItems": "الأكثر عناصر",
 
   // Folder dialog
+  "folder.untitled": "مجلد جديد",
   "folder.itemCount": "{count} عناصر",
   "folder.itemCountOne": "{count} عنصر",
   "folder.created": "أُنشئ في {date}",

@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react"
-import confetti from "canvas-confetti"
+import { useState, useEffect, useCallback } from "react"
 import { ProjectFolder } from "@/components/project-folder"
 import { Toaster } from "sonner"
 import { FullpageLoader } from "@/components/fullpage-loader"
-import { useGeneration } from "@/contexts/generation-context"
 import { useFolders } from "@/contexts/folder-context"
 import { useT } from "@/contexts/i18n-context"
 import { useSettings } from "@/contexts/settings-context"
@@ -41,31 +39,6 @@ import { toast } from "sonner"
 import type { Project } from "@/lib/data"
 
 const VIRTUALIZE_THRESHOLD = 100
-
-const PROJECT_CONFIGS = [
-  {
-    title: "How to Design a Fashion Brand",
-    fileCount: 6,
-    images: [
-      "/newbrand-portrait-1.png",
-      "/newbrand-portrait-2.png",
-      "/newbrand-portrait-3.png",
-      "/newbrand-portrait-4.png",
-      "/newbrand-portrait-5.png",
-    ],
-  },
-  {
-    title: "Starting a Modern Company in New York",
-    fileCount: 8,
-    images: [
-      "/brand-portrait-1.png",
-      "/brand-portrait-2.png",
-      "/brand-portrait-3.png",
-      "/brand-portrait-4.png",
-      "/brand-portrait-5.png",
-    ],
-  },
-]
 
 function CardDndWrapper({
   project,
@@ -117,12 +90,10 @@ function CardDndWrapper({
 }
 
 export function App() {
-  const { startGeneration } = useGeneration()
   const {
     createFolder,
     deleteFolder,
     renameFolder,
-    setFolderGenerating,
     getDisplayFolders,
     openFolder,
     searchQuery,
@@ -135,8 +106,6 @@ export function App() {
   const [libraryReady, setLibraryReady] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showContent, setShowContent] = useState(false)
-  const nextProjectIndexRef = useRef(0)
-  const mainRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -162,24 +131,15 @@ export function App() {
   const allProjects = getDisplayFolders()
 
   const handleCreateProject = useCallback(() => {
-    const configIndex = nextProjectIndexRef.current
-    const config = PROJECT_CONFIGS[configIndex]
-    nextProjectIndexRef.current = (configIndex + 1) % PROJECT_CONFIGS.length
-
-    const id = createFolder({
-      title: config.title,
-      fileCount: config.fileCount,
-      images: config.images,
-      isGenerating: true,
-      progress: 0,
+    createFolder({
+      title: t("folder.untitled"),
+      fileCount: 0,
+      images: [],
+      files: [],
       createdAt: new Date().toISOString(),
-      isEmpty: false,
+      isEmpty: true,
     })
-
-    startGeneration(id, () => {
-      setFolderGenerating(id, false)
-    })
-  }, [createFolder, startGeneration, setFolderGenerating])
+  }, [createFolder, t])
 
   const handleRemoveFolder = useCallback(
     (projectId: string) => {
@@ -269,52 +229,10 @@ export function App() {
           transform: showContent ? "translateY(0) scale(1)" : "translateY(20px) scale(0.98)",
         }}
       >
-        <main ref={mainRef} className="flex-1 min-h-screen p-4 pt-12 sm:p-6 sm:pt-14 md:p-8 md:pt-16">
+        <main className="flex-1 min-h-screen p-4 pt-12 sm:p-6 sm:pt-14 md:p-8 md:pt-16">
           <div className="mx-auto w-full max-w-[288px] sm:max-w-[600px] lg:max-w-[912px]">
             <div className="flex items-center justify-between h-12 mb-6">
               <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">{t("app.title")}</h1>
-              <button
-                className="text-sm font-medium text-black rounded-full hover:bg-white/90 transition-colors py-1.5 bg-card-foreground px-3 whitespace-nowrap"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  const x = (rect.left + rect.width / 2) / window.innerWidth
-                  const y = (rect.top + rect.height / 2) / window.innerHeight
-
-                  const colors = ["#ffffff", "#f5f5f5", "#e5e5e5", "#d4d4d4", "#a3a3a3"]
-
-                  confetti({
-                    particleCount: 40,
-                    spread: 50,
-                    origin: { x, y },
-                    colors,
-                    startVelocity: 20,
-                    gravity: 0.6,
-                    scalar: 0.8,
-                    drift: 0,
-                    ticks: 150,
-                    shapes: ["circle"],
-                    disableForReducedMotion: true,
-                  })
-
-                  setTimeout(() => {
-                    confetti({
-                      particleCount: 25,
-                      spread: 70,
-                      origin: { x, y: y - 0.05 },
-                      colors,
-                      startVelocity: 15,
-                      gravity: 0.5,
-                      scalar: 0.6,
-                      drift: 0,
-                      ticks: 120,
-                      shapes: ["circle"],
-                      disableForReducedMotion: true,
-                    })
-                  }, 100)
-                }}
-              >
-                {t("app.startTrial")}
-              </button>
             </div>
 
             <FolderToolbar />
