@@ -65,7 +65,7 @@ export class LibraryService {
     const parentPath = parentRow?.abs_path ?? this.root
     const proposed = path.join(parentPath, sanitizeName(input.name))
     const finalPath = atomicCreateDir(proposed)
-    const id = uuid()
+    const id = input.id ?? uuid()
     this.q.insertFolder.run({
       id,
       workspace_id: input.workspaceId ?? DEFAULT_WORKSPACE,

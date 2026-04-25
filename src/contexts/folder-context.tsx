@@ -29,8 +29,35 @@ import {
   type Workspace,
   type WorkflowStatus,
 } from "@/lib/data"
-import { detectFileType, loadFolders, readFileAsDataURL, saveFolders } from "@/lib/folder-storage"
+import {
+  detectFileType,
+  hydrateFromLibrary,
+  libraryCreateFolder,
+  libraryDeleteFolder,
+  libraryRenameFolder,
+  libraryUploadFiles,
+  loadFolders,
+  readFileAsDataURL,
+  saveFolders,
+} from "@/lib/folder-storage"
+import { library } from "@/lib/library"
 import { applyPattern } from "@/lib/rename-pattern"
+
+function isElectronEnv(): boolean {
+  return typeof window !== "undefined" && !!window.api?.library
+}
+
+function genUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  // Fallback (non-crypto) — only hit in very old environments.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
 
 export type SortKey = "created-desc" | "created-asc" | "name-asc" | "name-desc" | "count-desc" | "updated-desc"
 export type FilterKind = "all" | "empty" | "non-empty" | "with-images" | "favorites"
@@ -405,6 +432,16 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     if (stored && stored.length > 0) {
       setFolders(stored as FolderWithMeta[])
     }
+    // In Electron, the SQLite library is the source of truth — override
+    // localStorage state once the async hydration finishes.
+    void (async () => {
+      try {
+        const fromLibrary = await hydrateFromLibrary()
+        if (fromLibrary) setFolders(fromLibrary as FolderWithMeta[])
+      } catch (err) {
+        console.error("Failed to hydrate from library:", err)
+      }
+    })()
     try {
       const raw = window.localStorage.getItem(RECENTS_KEY)
       if (raw) setRecentIds(JSON.parse(raw))
@@ -540,7 +577,10 @@ export function FolderProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const createFolder = useCallback((init: Partial<Project> = {}) => {
-    const id = init.id ?? genId("new-project")
+    // Use a UUID in Electron mode so the same id flows through to SQLite
+    // and through the folders:// protocol for any future file operations.
+    const id =
+      init.id ?? (isElectronEnv() ? genUuid() : genId("new-project"))
     const now = new Date().toISOString()
     const newFolder: FolderWithMeta = {
       id,
@@ -568,6 +608,17 @@ export function FolderProvider({ children }: { children: ReactNode }) {
       isVisible: false,
     }
     setFolders((prev) => [newFolder, ...prev])
+    if (isElectronEnv()) {
+      void libraryCreateFolder(
+        newFolder.title ?? "Untitled",
+        newFolder.parentId ?? null,
+        id,
+      ).catch((err) => {
+        console.error("library.createFolder failed:", err)
+        // Roll back the optimistic insert on hard failure.
+        setFolders((prev) => prev.filter((f) => f.id !== id))
+      })
+    }
     return id
   }, [])
 
@@ -639,6 +690,11 @@ export function FolderProvider({ children }: { children: ReactNode }) {
       return prev.map((f) => (toMark.has(String(f.id)) ? { ...f, deletedAt: now } : f))
     })
     setRecentIds((prev) => prev.filter((rid) => rid !== id))
+    if (isElectronEnv()) {
+      void libraryDeleteFolder(id).catch((err) => {
+        console.error("library.deleteFolder failed:", err)
+      })
+    }
   }, [])
 
   const permanentlyDeleteFolder = useCallback((id: string) => {
@@ -693,6 +749,11 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...f, title, activity: log, updatedAt: new Date().toISOString() }
       }),
     )
+    if (isElectronEnv()) {
+      void libraryRenameFolder(id, title).catch((err) => {
+        console.error("library.renameFolder failed:", err)
+      })
+    }
   }, [])
 
   const updateFolderMetadata = useCallback((id: string, patch: Partial<Project>) => {
@@ -891,19 +952,50 @@ export function FolderProvider({ children }: { children: ReactNode }) {
   const uploadFiles = useCallback(async (folderId: string, files: FileList | File[]) => {
     const list = Array.from(files)
     const newFiles: FolderFile[] = []
-    for (const file of list) {
+
+    if (isElectronEnv()) {
+      // Electron: send raw bytes through the IPC bridge, get back canonical
+      // FileRecords. The url field is folders://<id>, served by the custom
+      // protocol — no base64 inflation, no localStorage bloat.
       try {
-        const url = await readFileAsDataURL(file)
-        newFiles.push({
-          id: genId("file"),
-          name: file.name,
-          url,
-          type: detectFileType(file.type || file.name),
-          size: file.size,
-          uploadedAt: new Date().toISOString(),
-        })
-      } catch {}
+        const created = await libraryUploadFiles(folderId, list)
+        if (created) {
+          for (const r of created) {
+            newFiles.push({
+              id: r.id,
+              name: r.name,
+              url: r.url,
+              type: r.type,
+              size: r.size,
+              uploadedAt: r.uploadedAt,
+              favorite: r.isFavorite,
+              pinned: r.isPinned,
+              rotation: r.rotation,
+              flipH: r.flipH,
+              flipV: r.flipV,
+            })
+          }
+        }
+      } catch (err) {
+        console.error("library.upload failed:", err)
+      }
+    } else {
+      // Web fallback: data URLs in localStorage (best-effort, quota-bounded).
+      for (const file of list) {
+        try {
+          const url = await readFileAsDataURL(file)
+          newFiles.push({
+            id: genId("file"),
+            name: file.name,
+            url,
+            type: detectFileType(file.type || file.name),
+            size: file.size,
+            uploadedAt: new Date().toISOString(),
+          })
+        } catch {}
+      }
     }
+
     if (newFiles.length === 0) return
     setFolders((prev) =>
       prev.map((f) => {

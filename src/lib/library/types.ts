@@ -1,6 +1,7 @@
 export type FolderFileType = "image" | "video" | "document" | "other"
 
 export interface CreateFolderInput {
+  id?: string
   parentId: string | null
   name: string
   workspaceId?: string

@@ -136,15 +136,17 @@ function fileRecordToFolderFile(f: FileRecord): FolderFile {
 }
 
 /**
- * Mirror a folder mutation into the Electron library. Returns false (so
- * callers can decide to keep the local state if Electron is unavailable).
+ * Mirror a folder mutation into the Electron library. Returns the canonical
+ * record (whose id matches what was passed in if the renderer pre-minted one)
+ * or null when not running in Electron.
  */
 export async function libraryCreateFolder(
   title: string,
   parentId: string | null,
+  id?: string,
 ): Promise<{ id: string } | null> {
   if (!isElectron()) return null
-  const f = await window.api.library.createFolder({ name: title, parentId })
+  const f = await window.api.library.createFolder({ id, name: title, parentId })
   return { id: f.id }
 }
 
