@@ -84,16 +84,23 @@ export function hashFileStream(absPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = createHash("sha256")
     const stream = fs.createReadStream(absPath)
-    stream.on("data", (chunk) => hash.update(chunk))
+    stream.on("data", (chunk) => {
+      const buf =
+        typeof chunk === "string"
+          ? Buffer.from(chunk)
+          : new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+      hash.update(buf)
+    })
     stream.on("end", () => resolve(hash.digest("hex")))
     stream.on("error", reject)
   })
 }
 
 export function hashBytes(bytes: Buffer | Uint8Array): string {
-  return createHash("sha256")
-    .update(Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes))
-    .digest("hex")
+  const buf = Buffer.isBuffer(bytes)
+    ? (bytes as unknown as Uint8Array)
+    : new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  return createHash("sha256").update(buf).digest("hex")
 }
 
 /**
@@ -104,7 +111,10 @@ export function writeBytesAtomic(targetPath: string, bytes: Buffer | Uint8Array)
   const final = resolveCollision(targetPath)
   fs.mkdirSync(path.dirname(final), { recursive: true })
   const tmp = `${final}.tmp-${process.pid}-${Date.now()}`
-  fs.writeFileSync(tmp, bytes)
+  const buf = Buffer.isBuffer(bytes)
+    ? (bytes as unknown as Uint8Array)
+    : new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  fs.writeFileSync(tmp, buf)
   fs.renameSync(tmp, final)
   return final
 }
