@@ -48,6 +48,9 @@ const api: WindowApi = {
     deleteKey: (provider) => invoke("ai:delete-key", provider),
     autoTag: (fileId, provider) => invoke("ai:auto-tag", fileId, provider),
     caption: (fileId, provider) => invoke("ai:caption", fileId, provider),
+    ocr: (fileId, provider) => invoke("ai:ocr", fileId, provider),
+    describeFolder: (folderId, provider) =>
+      invoke("ai:describe-folder", folderId, provider),
   },
   events: {
     on: (event, handler) => {

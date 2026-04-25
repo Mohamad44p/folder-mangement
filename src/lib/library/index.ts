@@ -49,6 +49,10 @@ export const library = {
       window.api.ai.autoTag(fileId, provider),
     caption: (fileId: string, provider?: AiProvider) =>
       window.api.ai.caption(fileId, provider),
+    ocr: (fileId: string, provider?: AiProvider) =>
+      window.api.ai.ocr(fileId, provider),
+    describeFolder: (folderId: string, provider?: AiProvider) =>
+      window.api.ai.describeFolder(folderId, provider),
   },
   events: {
     on: (

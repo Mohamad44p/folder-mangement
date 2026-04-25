@@ -112,6 +112,11 @@ export interface WindowApi {
       provider?: AiProvider,
     ) => Promise<{ tags: { tag: string; confidence: number }[] }>
     caption: (fileId: string, provider?: AiProvider) => Promise<{ caption: string }>
+    ocr: (fileId: string, provider?: AiProvider) => Promise<{ text: string }>
+    describeFolder: (
+      folderId: string,
+      provider?: AiProvider,
+    ) => Promise<{ description: string }>
   }
   events: {
     on: (

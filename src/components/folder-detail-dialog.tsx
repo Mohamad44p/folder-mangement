@@ -82,7 +82,8 @@ import { FileCommentsThread } from "./file-comments"
 import { ReactionsBar } from "./reactions-bar"
 import { ColorPaletteBar } from "./color-palette-bar"
 import { MapView } from "./map-view"
-import { aiAutoTagFile, aiDescribeFolder, aiSuggestCover, aiOcrFile } from "@/lib/ai-mocks"
+import { aiDescribeFolder, aiSuggestCover } from "@/lib/ai-mocks"
+import { library } from "@/lib/library"
 import { Lock, Unlock, Sparkles, MapPin, ScanText, Wand2, Search as SearchIcon } from "lucide-react"
 
 const FILE_ICONS = {
@@ -814,9 +815,29 @@ export function FolderDetailDialog() {
                   )}
                   <ActionPill
                     onClick={() => {
-                      const description = aiDescribeFolder(folder, subfolders)
-                      updateFolderMetadata(String(folder.id), { description })
-                      toast.success(t("toast.aiDescribeDone"))
+                      // First write a fast factual description from the data
+                      // we already have, then upgrade it with a real LLM
+                      // call when an AI key is configured.
+                      const factual = aiDescribeFolder(folder, subfolders)
+                      updateFolderMetadata(String(folder.id), { description: factual })
+                      const tid = toast.loading(t("toast.aiDescribeDone"))
+                      void library.ai
+                        .describeFolder(String(folder.id))
+                        .then((res) => {
+                          if (res.description) {
+                            updateFolderMetadata(String(folder.id), {
+                              description: res.description,
+                            })
+                          }
+                          toast.dismiss(tid)
+                          toast.success(t("toast.aiDescribeDone"))
+                        })
+                        .catch((err) => {
+                          toast.dismiss(tid)
+                          // Local description already saved; surface the
+                          // provider error but don't block the UX.
+                          toast.message((err as Error).message ?? "no AI key set?")
+                        })
                     }}
                     icon={<Wand2 className="size-3.5" />}
                     label={t("action.aiDescribe")}
@@ -1412,12 +1433,44 @@ export function FolderDetailDialog() {
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation()
-                                            const tags = aiAutoTagFile(file)
-                                            setFileAiTags(String(folder.id), file.id, tags)
-                                            if (file.type === "image") {
-                                              setFileOcr(String(folder.id), file.id, aiOcrFile(file))
+                                            if (file.type !== "image") {
+                                              toast.message("AI tagging is image-only for now")
+                                              return
                                             }
-                                            toast.success(t("toast.aiTaggedN", { n: localizeNumber(tags.length, lang) }))
+                                            const tid = toast.loading("Tagging…")
+                                            void Promise.allSettled([
+                                              library.ai.autoTag(file.id),
+                                              library.ai.ocr(file.id),
+                                            ]).then(([tagsRes, ocrRes]) => {
+                                              toast.dismiss(tid)
+                                              if (tagsRes.status === "fulfilled") {
+                                                setFileAiTags(
+                                                  String(folder.id),
+                                                  file.id,
+                                                  tagsRes.value.tags,
+                                                )
+                                                toast.success(
+                                                  t("toast.aiTaggedN", {
+                                                    n: localizeNumber(
+                                                      tagsRes.value.tags.length,
+                                                      lang,
+                                                    ),
+                                                  }),
+                                                )
+                                              } else {
+                                                toast.error(
+                                                  (tagsRes.reason as Error)?.message ??
+                                                    "no AI key set?",
+                                                )
+                                              }
+                                              if (ocrRes.status === "fulfilled") {
+                                                setFileOcr(
+                                                  String(folder.id),
+                                                  file.id,
+                                                  ocrRes.value.text,
+                                                )
+                                              }
+                                            })
                                           }}
                                           className="size-7 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/70 hover:text-violet-200 backdrop-blur-sm"
                                           title={t("action.aiTag")}

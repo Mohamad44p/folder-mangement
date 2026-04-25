@@ -35,12 +35,16 @@ win:
       arch:
         - x64
         - arm64
+  icon: build/icon.png
   signAndEditExecutable: false
 
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   perMachine: false
+  installerIcon: build/icon.png
+  uninstallerIcon: build/icon.png
+  installerHeaderIcon: build/icon.png
 
 mac:
   target:
@@ -48,6 +52,10 @@ mac:
       arch:
         - x64
         - arm64
+  icon: build/icon.png
   category: public.app-category.productivity
   hardenedRuntime: false
   gatekeeperAssess: false
+
+dmg:
+  icon: build/icon.png

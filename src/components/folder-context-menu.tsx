@@ -9,7 +9,8 @@ import {
 } from "lucide-react"
 import type { ReactNode } from "react"
 import { toast } from "sonner"
-import { aiAutoTagFile, aiSuggestCover } from "@/lib/ai-mocks"
+import { aiSuggestCover } from "@/lib/ai-mocks"
+import { library } from "@/lib/library"
 
 export function FolderContextMenu({
   folderId,
@@ -85,12 +86,32 @@ export function FolderContextMenu({
                 setFolderCover(folderId, sug)
                 toast.success(t("toast.coverSuggested"))
               }
-              for (const file of folder.files ?? []) {
-                if ((file.aiTags?.length ?? 0) === 0) {
-                  setFileAiTags(folderId, file.id, aiAutoTagFile(file))
-                }
+              const untagged = (folder.files ?? []).filter(
+                (f) => f.type === "image" && (f.aiTags?.length ?? 0) === 0,
+              )
+              if (untagged.length === 0) {
+                toast.success(t("ctx.aiRanOn"))
+                return
               }
-              toast.success(t("ctx.aiRanOn"))
+              const tid = toast.loading(`Tagging ${untagged.length} image${untagged.length === 1 ? "" : "s"}…`)
+              void Promise.allSettled(
+                untagged.map((file) =>
+                  library.ai.autoTag(file.id).then((res) => {
+                    setFileAiTags(folderId, file.id, res.tags)
+                  }),
+                ),
+              ).then((results) => {
+                const ok = results.filter((r) => r.status === "fulfilled").length
+                const failed = results.length - ok
+                toast.dismiss(tid)
+                if (ok > 0) toast.success(`Tagged ${ok} image${ok === 1 ? "" : "s"}`)
+                if (failed > 0) {
+                  const firstErr = (results.find((r) => r.status === "rejected") as
+                    | PromiseRejectedResult
+                    | undefined)?.reason
+                  toast.error(`${failed} failed: ${(firstErr as Error)?.message ?? "no AI key set?"}`)
+                }
+              })
             }}
           >
             {t("ctx.runAiTagging")}

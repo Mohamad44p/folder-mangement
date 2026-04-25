@@ -1,80 +1,96 @@
+/**
+ * Synchronous helpers around AI-derived data. The actual model calls live in
+ * the main process (electron/ipc/ai-real.ts) and are invoked via
+ * window.api.ai.autoTag / .ocr / .caption / .describeFolder. These helpers
+ * either:
+ *   - read previously-persisted results off the file/folder records, or
+ *   - compute a useful answer locally from the actual file/folder properties
+ *     (no AI required, no fakery).
+ *
+ * Existing call sites that need fresh AI output should call the async
+ * `window.api.ai.*` methods directly (see `library.ai.*` in
+ * `src/lib/library/index.ts`). The helpers here exist so that purely-sync UI
+ * code (right-click menus, optimistic renders) can show whatever real data is
+ * already on the record without round-tripping through IPC.
+ *
+ * The filename is kept as `ai-mocks.ts` for import compatibility — there are
+ * no mocks left.
+ */
+
 import type { FolderFile, Project } from "./data"
 
-const SCENE_TAGS = [
-  "portrait", "landscape", "studio", "outdoor", "indoor", "city", "nature",
-  "abstract", "minimal", "vibrant", "moody", "high-contrast", "soft-light",
-]
-const COLOR_TAGS = ["warm", "cool", "monochrome", "saturated", "pastel", "earth-tones"]
-const SUBJECT_TAGS = ["person", "object", "texture", "geometric", "organic", "architectural"]
-
-function hash(s: string): number {
-  let h = 0
-  for (let i = 0; i < s.length; i++) {
-    h = (h << 5) - h + s.charCodeAt(i)
-    h |= 0
-  }
-  return Math.abs(h)
-}
-
-function pickN<T>(arr: T[], n: number, seed: number): T[] {
-  const out: T[] = []
-  const taken = new Set<number>()
-  let h = seed
-  while (out.length < Math.min(n, arr.length)) {
-    h = (h * 9301 + 49297) % 233280
-    const idx = h % arr.length
-    if (!taken.has(idx)) {
-      taken.add(idx)
-      out.push(arr[idx])
-    }
-  }
-  return out
-}
-
 export function aiAutoTagFile(file: FolderFile): { tag: string; confidence: number }[] {
-  const seed = hash(file.id + file.name)
-  const scene = pickN(SCENE_TAGS, 2, seed)
-  const color = pickN(COLOR_TAGS, 1, seed >> 3)
-  const subject = pickN(SUBJECT_TAGS, 1, seed >> 5)
-  const all = [...scene, ...color, ...subject]
-  return all.map((tag, i) => ({
-    tag,
-    confidence: Math.round(95 - i * 7 - (seed % 5)),
-  }))
+  // Real: returns the AI-tags persisted on the file record (populated via
+  // electron/ipc/ai-real.ts after a real provider call). Empty array when
+  // tags have not been generated yet.
+  return file.aiTags ?? []
 }
 
 export function aiDescribeFolder(folder: Project, subfolders: Project[]): string {
-  const fileNames = (folder.files ?? []).slice(0, 5).map((f) => f.name).join(", ")
-  const tagSummary = (folder.tags ?? []).slice(0, 3).join(", ")
-  const subList = subfolders.slice(0, 3).map((s) => s.title).join(", ")
+  // Real: composes a factual description from the actual folder contents.
+  // For an LLM-generated description, callers should use
+  // `window.api.ai.describeFolder(folderId)` instead.
+  const files = folder.files ?? []
   const parts: string[] = []
-  parts.push(`A ${folder.title.toLowerCase()} collection`)
-  if (tagSummary) parts.push(`focused on ${tagSummary}`)
-  if (folder.files && folder.files.length > 0) {
-    parts.push(`with ${folder.files.length} files`)
-    if (fileNames) parts.push(`including ${fileNames}`)
+
+  if (files.length === 0 && subfolders.length === 0) {
+    return "Empty folder."
   }
+
+  if (files.length > 0) {
+    const counts = new Map<string, number>()
+    for (const f of files) counts.set(f.type, (counts.get(f.type) ?? 0) + 1)
+    const typeStr = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([t, n]) => `${n} ${t}${n === 1 ? "" : "s"}`)
+      .join(", ")
+    parts.push(`Contains ${typeStr}`)
+  }
+
   if (subfolders.length > 0) {
-    parts.push(`organized into ${subfolders.length} subfolders`)
-    if (subList) parts.push(`(${subList})`)
+    const previewNames = subfolders
+      .slice(0, 3)
+      .map((s) => s.title)
+      .filter(Boolean)
+      .join(", ")
+    parts.push(
+      `organized into ${subfolders.length} ${
+        subfolders.length === 1 ? "subfolder" : "subfolders"
+      }${previewNames ? `: ${previewNames}` : ""}${subfolders.length > 3 ? "…" : ""}`,
+    )
   }
-  return parts.join(" ") + "."
+
+  const allTags = new Set<string>()
+  for (const f of files) {
+    for (const t of f.tags ?? []) allTags.add(t)
+    for (const t of f.aiTags ?? []) allTags.add(t.tag)
+  }
+  if (allTags.size > 0) {
+    const top = [...allTags].slice(0, 5).join(", ")
+    parts.push(`tags: ${top}`)
+  }
+
+  return parts.join(". ") + "."
 }
 
 export function aiSuggestCover(folder: Project): string | null {
+  // Real heuristic. No AI needed — picks a deterministic best image based on
+  // user-curated signals (pin, favourite) then file size.
   const images = (folder.files ?? []).filter((f) => f.type === "image")
   if (images.length === 0) return null
-  const fav = images.find((f) => f.favorite)
-  if (fav) return fav.id
-  // Pick the largest by size, fallback to first
-  const sorted = [...images].sort((a, b) => (b.size ?? 0) - (a.size ?? 0))
-  return sorted[0]?.id ?? null
+  const pinned = images.find((f) => f.pinned)
+  if (pinned) return pinned.id
+  const favorited = images.find((f) => f.favorite)
+  if (favorited) return favorited.id
+  return images.slice().sort((a, b) => (b.size ?? 0) - (a.size ?? 0))[0].id
 }
 
 export function aiOcrFile(file: FolderFile): string {
-  // Mock OCR: invent text based on the filename
-  const base = file.name.replace(/[._-]/g, " ")
-  return `Detected text: "${base}". This is a mock OCR result; in production this would call a real model.`
+  // Real: returns the OCR text persisted on the file record (populated via
+  // electron/ipc/ai-real.ts after a real provider call). Empty string when
+  // OCR has not been generated yet — callers should trigger the async
+  // `window.api.ai.ocr(fileId)` to populate it.
+  return file.ocrText ?? ""
 }
 
 export interface VisualSimilarity {
@@ -88,7 +104,12 @@ export function aiVisualSimilar(
   query: FolderFile,
   allFolders: Project[],
 ): VisualSimilarity[] {
-  const queryTags = new Set([...(query.tags ?? []), ...(query.aiTags?.map((t) => t.tag) ?? [])])
+  // Real overlap-based similarity. Combines manually-applied tags, AI-applied
+  // tags, file type, and colour palette. Sorted by total score, capped at 30.
+  const queryTags = new Set([
+    ...(query.tags ?? []),
+    ...(query.aiTags?.map((t) => t.tag) ?? []),
+  ])
   const queryPalette = query.palette ?? []
   const out: VisualSimilarity[] = []
   for (const folder of allFolders) {
@@ -96,14 +117,16 @@ export function aiVisualSimilar(
     for (const file of folder.files ?? []) {
       if (file.id === query.id) continue
       let score = 0
-      const fileTags = new Set([...(file.tags ?? []), ...(file.aiTags?.map((t) => t.tag) ?? [])])
+      const fileTags = new Set([
+        ...(file.tags ?? []),
+        ...(file.aiTags?.map((t) => t.tag) ?? []),
+      ])
       let shared = 0
       queryTags.forEach((t) => {
         if (fileTags.has(t)) shared++
       })
       score += shared * 20
       if (file.type === query.type) score += 10
-      // palette overlap
       if (queryPalette.length > 0 && file.palette && file.palette.length > 0) {
         let paletteScore = 0
         for (const c of queryPalette) {
@@ -119,7 +142,10 @@ export function aiVisualSimilar(
           fileId: file.id,
           folderId: String(folder.id),
           score,
-          reason: shared > 0 ? `${shared} shared tag${shared === 1 ? "" : "s"}` : "similar palette",
+          reason:
+            shared > 0
+              ? `${shared} shared tag${shared === 1 ? "" : "s"}`
+              : "similar palette",
         })
       }
     }

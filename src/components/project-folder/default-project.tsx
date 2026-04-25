@@ -306,7 +306,9 @@ export function DefaultProject({
           >
             {[...Array(5)].map((_, imgIndex) => {
               const pos = imagePositions[imgIndex]
-              const imageUrl = project.images?.[imgIndex % (project.images?.length || 1)] || "/placeholder.svg"
+              const sourceImage = project.images?.[imgIndex % (project.images?.length || 1)]
+              if (!sourceImage) return null
+              const imageUrl = sourceImage
               const shouldShowImages = !project.isGenerating || showImages
 
               const centerIndex = 2
@@ -353,7 +355,7 @@ export function DefaultProject({
                 >
                   <div className="h-[160px] w-[100px] overflow-hidden rounded-lg">
                     <motion.img
-                      src={imageUrl || "/placeholder.svg"}
+                      src={imageUrl}
                       alt={"Preview " + (imgIndex + 1)}
                       className="h-full w-full object-cover"
                       animate={{
@@ -681,12 +683,13 @@ export function DefaultProject({
               style={{ marginTop: "-34px" }}
             >
               {[1, 2, 3].map((imgIndex, i) => {
-                const imageUrl = project.images?.[imgIndex] || "/placeholder.svg"
+                const imageUrl = project.images?.[imgIndex]
+                if (!imageUrl) return null
                 const rotations = [-10, 0, 10]
                 const yOffsets = [4, 0, 4]
                 const scales = [0.95, 1.05, 0.95]
                 const marginLeft = i === 0 ? 0 : -8
-                
+
                 return (
                   <div
                     key={imgIndex}
@@ -697,14 +700,14 @@ export function DefaultProject({
                       animation: `crownImageAppear 400ms cubic-bezier(0.34, 1.56, 0.64, 1) ${80 + i * 60}ms both`,
                     }}
                   >
-                    <div 
+                    <div
                       className="h-[72px] w-[44px] overflow-hidden rounded-md shadow-xl"
                       style={{
                         transform: `translateY(${yOffsets[i]}px) rotate(${rotations[i]}deg) scale(${scales[i]})`,
                       }}
                     >
                       <img
-                        src={imageUrl || "/placeholder.svg"}
+                        src={imageUrl}
                         alt={"Preview " + (imgIndex + 1)}
                         className="h-full w-full object-cover"
                         style={{

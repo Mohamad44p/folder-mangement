@@ -2,7 +2,7 @@ import { app, ipcMain, safeStorage } from "electron"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import type Database from "better-sqlite3"
-import { Queries, type FileRow } from "../db/queries"
+import { Queries, type FileRow, type FolderRow } from "../db/queries"
 import { wrapIpc } from "./envelope"
 import type { AiProvider } from "../../src/lib/library/types"
 
@@ -19,6 +19,14 @@ interface AiAutoTagResult {
 
 interface AiCaptionResult {
   caption: string
+}
+
+interface AiOcrResult {
+  text: string
+}
+
+interface AiDescribeResult {
+  description: string
 }
 
 function loadKeys(): Record<string, string> {
@@ -298,6 +306,144 @@ No prose, no explanations, JSON only.`
       },
     ),
   )
+
+  ipcMain.handle(
+    "ai:ocr",
+    wrapIpc<AiOcrResult, [string, AiProvider | undefined]>(
+      async (_e, fileId, preferred) => {
+        const file = q.getFileById.get(fileId) as FileRow | undefined
+        if (!file) throw aiError(`file ${fileId} not found`)
+        if (file.type !== "image") {
+          throw aiError(`OCR is only supported for images (got ${file.type})`)
+        }
+        const keys = loadKeys()
+        const { provider, key } = pickProvider(keys, preferred)
+        const { base64, mime } = readImageAsBase64(file.abs_path, file.mime ?? undefined)
+        const prompt =
+          "Extract every word of legible text from this image, in reading order. " +
+          "Preserve line breaks. Return only the extracted text — no commentary, " +
+          "no labels, no quotes. If there is no readable text, respond with an empty string."
+        const raw =
+          provider === "openai"
+            ? await callOpenAiVision(key, base64, mime, prompt, false)
+            : provider === "anthropic"
+            ? await callAnthropicVision(key, base64, mime, prompt)
+            : (() => {
+                throw aiError(`${provider} not implemented yet`)
+              })()
+        const text = raw.trim()
+        db.prepare(
+          `UPDATE files SET ocr_text = ?, modified_at = datetime('now') WHERE id = ?`,
+        ).run(text, fileId)
+        return { text }
+      },
+    ),
+  )
+
+  ipcMain.handle(
+    "ai:describe-folder",
+    wrapIpc<AiDescribeResult, [string, AiProvider | undefined]>(
+      async (_e, folderId, preferred) => {
+        const folder = q.getFolderById.get(folderId) as FolderRow | undefined
+        if (!folder) throw aiError(`folder ${folderId} not found`)
+        const keys = loadKeys()
+        const { provider, key } = pickProvider(keys, preferred)
+
+        // Compose a real factual summary of the folder contents (no images sent;
+        // this saves tokens and keeps the call cheap).
+        const files = db
+          .prepare<[string]>(
+            `SELECT name, type, mime, size, caption, ocr_text FROM files WHERE folder_id = ? AND deleted_at IS NULL LIMIT 80`,
+          )
+          .all(folderId) as {
+          name: string
+          type: string
+          mime: string | null
+          size: number | null
+          caption: string | null
+          ocr_text: string | null
+        }[]
+        const subfolders = db
+          .prepare<[string]>(
+            `SELECT name FROM folders WHERE parent_id = ? AND deleted_at IS NULL LIMIT 30`,
+          )
+          .all(folderId) as { name: string }[]
+
+        const inventory = {
+          folder: { name: folder.name, notes: folder.notes ?? "" },
+          totalFiles: files.length,
+          fileTypes: countBy(files, (f) => f.type),
+          subfolders: subfolders.map((s) => s.name),
+          captions: files.map((f) => f.caption).filter(Boolean).slice(0, 20),
+          fileNames: files.map((f) => f.name).slice(0, 30),
+        }
+
+        const prompt = `Write a concise 1-2 sentence description of this folder
+based on the inventory below. Plain prose, no labels, no quotes, no preamble.
+
+${JSON.stringify(inventory, null, 2)}`
+
+        const raw = await callTextOnly(provider, key, prompt)
+        const description = raw.trim().replace(/^["']|["']$/g, "")
+        db.prepare(
+          `UPDATE folders SET notes = ?, updated_at = datetime('now') WHERE id = ?`,
+        ).run(description, folderId)
+        return { description }
+      },
+    ),
+  )
+}
+
+async function callTextOnly(
+  provider: AiProvider,
+  apiKey: string,
+  prompt: string,
+): Promise<string> {
+  if (provider === "openai") {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: 200,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    })
+    if (!res.ok) throw aiError(`openai ${res.status}: ${await res.text().catch(() => "")}`)
+    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] }
+    return json.choices?.[0]?.message?.content ?? ""
+  }
+  if (provider === "anthropic") {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 200,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    })
+    if (!res.ok) throw aiError(`anthropic ${res.status}: ${await res.text().catch(() => "")}`)
+    const json = (await res.json()) as { content?: { type: string; text?: string }[] }
+    return json.content?.find((c) => c.type === "text")?.text ?? ""
+  }
+  throw aiError(`${provider} not implemented yet`)
+}
+
+function countBy<T>(items: T[], key: (item: T) => string): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const item of items) {
+    const k = key(item)
+    out[k] = (out[k] ?? 0) + 1
+  }
+  return out
 }
 
 function aiError(msg: string): Error & { code: string } {

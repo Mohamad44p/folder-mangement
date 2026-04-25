@@ -1,4 +1,5 @@
 import { app, BrowserWindow, shell, ipcMain } from "electron"
+import * as fs from "node:fs"
 import * as path from "node:path"
 import { openLibraryDb } from "./db/open"
 import { Queries } from "./db/queries"
@@ -34,13 +35,33 @@ let libraryService: LibraryService | null = null
 let watcher: LibraryWatcher | null = null
 let bootstrapped = false
 
+function resolveIconPath(): string | undefined {
+  // In dev, resolve relative to the repo. In production, the built renderer
+  // is alongside dist-electron — public/icons/ ships as dist-renderer/icons/.
+  const candidates = [
+    path.join(__dirname, "..", "public", "icons", "folder4.png"),
+    path.join(__dirname, "..", "dist-renderer", "icons", "folder4.png"),
+    path.join(process.resourcesPath ?? "", "public", "icons", "folder4.png"),
+  ]
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) return p
+    } catch {
+      // ignore
+    }
+  }
+  return undefined
+}
+
 function createWindow(): void {
+  const iconPath = resolveIconPath()
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 800,
     minHeight: 600,
     backgroundColor: "#191919",
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
