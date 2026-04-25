@@ -532,25 +532,28 @@ function Detail({ label, value, multi }: { label: string; value: string; multi?:
   )
 }
 
-const EXIF_FIELDS: Array<[string, string]> = [
-  ["Make", "Camera make"],
-  ["Model", "Camera model"],
-  ["LensModel", "Lens"],
-  ["FNumber", "Aperture"],
-  ["ExposureTime", "Shutter"],
-  ["ISO", "ISO"],
-  ["FocalLength", "Focal length"],
-  ["WhiteBalance", "White balance"],
-  ["DateTimeOriginal", "Taken"],
+// Each entry maps a raw EXIF key to a translation key. The flattened map's
+// keys are translation keys (e.g. "exif.cameraMake") so ExifPanel can translate
+// them on the fly.
+const EXIF_FIELDS: Array<[string, TranslationKey]> = [
+  ["Make", "exif.cameraMake"],
+  ["Model", "exif.cameraModel"],
+  ["LensModel", "exif.lens"],
+  ["FNumber", "exif.aperture"],
+  ["ExposureTime", "exif.shutter"],
+  ["ISO", "exif.iso"],
+  ["FocalLength", "exif.focal"],
+  ["WhiteBalance", "exif.whiteBalance"],
+  ["DateTimeOriginal", "exif.taken"],
 ]
 
 function flattenExif(data: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {}
-  for (const [key, label] of EXIF_FIELDS) {
+  for (const [key, labelKey] of EXIF_FIELDS) {
     const v = data[key]
     if (v == null) continue
     const s = formatExifValue(key, v)
-    if (s) out[label] = s
+    if (s) out[labelKey] = s
   }
   return out
 }

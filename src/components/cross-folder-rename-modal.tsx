@@ -138,7 +138,7 @@ export function CrossFolderRenameModal() {
                       key={tok.token}
                       onClick={() => setPattern((p) => p + tok.token)}
                       className="px-2 py-0.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] text-white/70 font-mono"
-                      title={tok.description}
+                      title={t(tok.descKey)}
                     >
                       {tok.token}
                     </button>

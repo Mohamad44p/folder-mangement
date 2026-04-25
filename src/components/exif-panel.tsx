@@ -2,6 +2,7 @@
 
 import { useT } from "@/contexts/i18n-context"
 import { localizeNumber } from "@/lib/localize"
+import type { TranslationKey } from "@/lib/i18n-dict"
 import { Camera } from "lucide-react"
 
 export function ExifPanel({ exif, dimensions }: { exif?: Record<string, string>; dimensions?: { width: number; height: number } }) {
@@ -21,7 +22,12 @@ export function ExifPanel({ exif, dimensions }: { exif?: Record<string, string>;
           />
         )}
         {exif &&
-          Object.entries(exif).map(([k, v]) => <Row key={k} label={k} value={v} />)}
+          Object.entries(exif).map(([k, v]) => (
+            // The map key is a TranslationKey (see flattenExif in image-lightbox);
+            // legacy records may still contain a literal label, in which case
+            // t() falls back to the key string itself.
+            <Row key={k} label={t(k as TranslationKey)} value={v} />
+          ))}
       </div>
     </div>
   )

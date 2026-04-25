@@ -1,18 +1,19 @@
 import type { FolderFile } from "./data"
+import type { TranslationKey } from "./i18n-dict"
 
 export interface RenameToken {
   token: string
-  description: string
+  descKey: TranslationKey
   example: string
 }
 
 export const RENAME_TOKENS: RenameToken[] = [
-  { token: "{n}", description: "Index (1, 2, 3...)", example: "1" },
-  { token: "{n2}", description: "Index, 2 digits", example: "01" },
-  { token: "{n3}", description: "Index, 3 digits", example: "001" },
-  { token: "{name}", description: "Original name", example: "image" },
-  { token: "{date}", description: "Upload date YYYY-MM-DD", example: "2026-04-25" },
-  { token: "{type}", description: "File type", example: "image" },
+  { token: "{n}", descKey: "renameToken.indexDesc", example: "1" },
+  { token: "{n2}", descKey: "renameToken.index2Desc", example: "01" },
+  { token: "{n3}", descKey: "renameToken.index3Desc", example: "001" },
+  { token: "{name}", descKey: "renameToken.nameDesc", example: "image" },
+  { token: "{date}", descKey: "renameToken.dateDesc", example: "2026-04-25" },
+  { token: "{type}", descKey: "renameToken.typeDesc", example: "image" },
 ]
 
 function pad(n: number, width: number): string {

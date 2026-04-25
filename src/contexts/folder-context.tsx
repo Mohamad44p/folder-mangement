@@ -830,7 +830,7 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       const now = new Date().toISOString()
       // Capture title for the toast before mutating state.
-      let title = "Folder"
+      let title = t("folder.fallbackName")
       setFolders((prev) => {
         const target = prev.find((f) => String(f.id) === id)
         if (target?.title) title = target.title

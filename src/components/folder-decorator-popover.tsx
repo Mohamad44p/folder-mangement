@@ -71,7 +71,7 @@ export function FolderDecoratorPopover({
                         active ? "ring-2 ring-white scale-110" : "hover:scale-105"
                       }`}
                       style={{ backgroundColor: c.value }}
-                      title={c.label}
+                      title={t(`accentName.${c.id}` as const)}
                     >
                       {active && <Check className="size-3 text-white" />}
                     </button>
