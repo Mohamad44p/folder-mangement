@@ -42,6 +42,7 @@ import {
 } from "@/lib/folder-storage"
 import { library } from "@/lib/library"
 import { applyPattern } from "@/lib/rename-pattern"
+import { toast } from "sonner"
 
 function isElectronEnv(): boolean {
   return typeof window !== "undefined" && !!window.api?.library
@@ -673,29 +674,48 @@ export function FolderProvider({ children }: { children: ReactNode }) {
     [folders],
   )
 
-  const deleteFolder = useCallback((id: string) => {
-    const now = new Date().toISOString()
-    setFolders((prev) => {
-      const toMark = new Set<string>([id])
-      let changed = true
-      while (changed) {
-        changed = false
-        prev.forEach((f) => {
-          if (f.parentId && toMark.has(f.parentId) && !toMark.has(String(f.id))) {
-            toMark.add(String(f.id))
-            changed = true
-          }
+  const deleteFolder = useCallback(
+    (id: string) => {
+      const now = new Date().toISOString()
+      // Capture title for the toast before mutating state.
+      let title = "Folder"
+      setFolders((prev) => {
+        const target = prev.find((f) => String(f.id) === id)
+        if (target?.title) title = target.title
+        const toMark = new Set<string>([id])
+        let changed = true
+        while (changed) {
+          changed = false
+          prev.forEach((f) => {
+            if (f.parentId && toMark.has(f.parentId) && !toMark.has(String(f.id))) {
+              toMark.add(String(f.id))
+              changed = true
+            }
+          })
+        }
+        return prev.map((f) => (toMark.has(String(f.id)) ? { ...f, deletedAt: now } : f))
+      })
+      setRecentIds((prev) => prev.filter((rid) => rid !== id))
+      if (isElectronEnv()) {
+        void libraryDeleteFolder(id).catch((err) => {
+          console.error("library.deleteFolder failed:", err)
         })
       }
-      return prev.map((f) => (toMark.has(String(f.id)) ? { ...f, deletedAt: now } : f))
-    })
-    setRecentIds((prev) => prev.filter((rid) => rid !== id))
-    if (isElectronEnv()) {
-      void libraryDeleteFolder(id).catch((err) => {
-        console.error("library.deleteFolder failed:", err)
+      toast(`"${title}" moved to trash`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            restoreFolder(id)
+          },
+        },
+        duration: 6000,
       })
-    }
-  }, [])
+    },
+    // restoreFolder is defined just below — referenced via closure that
+    // captures the latest definition at call-time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
   const permanentlyDeleteFolder = useCallback((id: string) => {
     setFolders((prev) => {
@@ -735,6 +755,11 @@ export function FolderProvider({ children }: { children: ReactNode }) {
         return { ...rest, activity: log.slice(0, 50) } as FolderWithMeta
       })
     })
+    if (isElectronEnv()) {
+      void library.folders.restore(id).catch((err) => {
+        console.error("library.restoreFolder failed:", err)
+      })
+    }
   }, [])
 
   const emptyTrash = useCallback(() => {
