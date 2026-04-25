@@ -10,14 +10,13 @@ A **Vite + React Router + Electron desktop app** for Windows and macOS. State is
 
 Package manager is **bun**.
 
-- `bun install` — install deps
+- `bun install` — install deps (postinstall rebuilds native modules for Electron's Node ABI)
 - `bun run dev` — Vite + Electron concurrent dev
 - `bun run build` — production build (renderer + main)
-- `bun run package` — installer artifacts via electron-builder
-- `bun run lint` — eslint
+- `bun run package` — installer artifacts via electron-builder (NSIS + DMG)
+- `bun run lint` — eslint flat config (`eslint.config.js`)
 - `bun run typecheck` — tsc on renderer + main configs
-- `bun run test` — vitest (unit + integration)
-- `bun run test:e2e` — playwright-electron smoke
+- `bun run rebuild:electron` — re-run electron-rebuild after a `npm rebuild`
 
 ## Architecture
 
@@ -81,7 +80,27 @@ Custom HTML5 DnD — not `react-dnd` or `dnd-kit`. `useDraggable({ kind, ... })`
 - Tailwind v4 via `@tailwindcss/postcss` (no `tailwind.config.*`); design tokens live in `src/index.css`.
 - shadcn config: `components.json` style `new-york`, base color `neutral`, `lucide` icons.
 - User accent color writes `--accent-user` / `--accent-user-soft` / `--accent-user-ring` on `:root`. **Do not write to `--accent`** — that's shadcn's token.
+- Theme is one of `dark | light | auto`. `auto` reads `prefers-color-scheme` and reapplies on OS theme change. The active theme is exposed as `data-theme` on `<html>` (always `dark` or `light` even when the user picked `auto`).
 - Density and reduce-motion exposed as `data-density` / `data-reduce-motion` on `<html>`; `MotionConfig` wires Framer Motion to the same flag.
+
+### Performance
+
+- The main folder grid switches to `<VirtualFolderGrid>` when the active list exceeds 100 items (`@tanstack/react-virtual` window virtualizer, row-based, 1/2/3 responsive columns). Below that threshold the existing motion-animated grid renders.
+
+### AI (BYOK)
+
+- Provider keys (`anthropic` / `openai`) are stored at `userData/ai-keys.dat` encrypted via `safeStorage`. The `AiKeysSection` component in the settings popover manages them.
+- `electron/ipc/ai-real.ts` implements `ai:auto-tag` and `ai:caption`. Auto-tag prompts the model for ≤8 lowercase tags and persists them into `file_ai_tags` (and updates `ai_tag_status`). Caption persists into the `caption` column.
+- `folder-context.tsx` fires `library.ai.autoTag(fileId)` after each image upload; failures are silent (no key configured / network error / model failure).
+
+### Power search
+
+- `src/components/global-search-palette.tsx` parses the Cmd+K query for syntax tokens: `tag:`, `type:`, `name:`, `before:YYYY-MM-DD`, `after:YYYY-MM-DD`, `size:` with `>`/`<`/`>=`/`<=`/`=` operators and `B`/`KB`/`MB`/`GB` units, plus `fav` / `favorite`. Quoted multi-word values are honoured: `name:"vacation 2026"`.
+- `src/lib/search-syntax.ts` is the standalone reusable parser with the same syntax. The palette currently has its own copy of the parser; consolidate when the search UI is rewritten.
+
+### Undo
+
+- Destructive actions (currently `deleteFolder`) emit a sonner toast with an Undo action that calls `restoreFolder`. Soft-delete moves the on-disk folder to `.folders-app/trash/<rel>` so the restore is a single rename back.
 
 ### Path alias
 
