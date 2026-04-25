@@ -34,6 +34,7 @@ import { OnboardingTour } from "@/components/onboarding-tour"
 import { FolderContextMenu } from "@/components/folder-context-menu"
 import { LibraryPicker } from "@/components/library-picker"
 import { VirtualFolderGrid } from "@/components/virtual-folder-grid"
+import { UpdateToast } from "@/components/update-toast"
 import { toast } from "sonner"
 import type { Project } from "@/lib/data"
 
@@ -218,6 +219,7 @@ export function App() {
           },
         }}
       />
+      <UpdateToast />
 
       <FolderSidebar />
 

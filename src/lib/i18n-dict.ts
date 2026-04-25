@@ -1056,6 +1056,22 @@ const en = {
   "common.daysAgo": "{n}d ago",
   "common.copied": "Copied",
   "common.removed": "Removed",
+
+  // === Update flow ===
+  "update.available.title": "Update available",
+  "update.available.body": "Folders {version} is ready to download.",
+  "update.download": "Download update",
+  "update.later": "Later",
+  "update.downloading": "Downloading update…",
+  "update.ready.title": "Update ready",
+  "update.ready.body": "Restart Folders to install {version}.",
+  "update.restart": "Restart now",
+  "update.dismiss": "Dismiss",
+  "update.error.title": "Update failed",
+  "update.checking": "Checking for updates…",
+  "update.upToDate": "You're on the latest version.",
+  "update.checkNow": "Check for updates",
+  "update.version": "Version {version}",
 }
 
 const ar: Record<keyof typeof en, string> = {
@@ -2112,6 +2128,22 @@ const ar: Record<keyof typeof en, string> = {
   "common.daysAgo": "قبل {n} يوم",
   "common.copied": "تم النسخ",
   "common.removed": "تمت الإزالة",
+
+  // === Update flow ===
+  "update.available.title": "تحديث متوفر",
+  "update.available.body": "الإصدار {version} من المجلدات جاهز للتنزيل.",
+  "update.download": "تنزيل التحديث",
+  "update.later": "لاحقاً",
+  "update.downloading": "جارٍ تنزيل التحديث…",
+  "update.ready.title": "التحديث جاهز",
+  "update.ready.body": "أعد تشغيل المجلدات لتثبيت {version}.",
+  "update.restart": "إعادة التشغيل الآن",
+  "update.dismiss": "تجاهل",
+  "update.error.title": "فشل التحديث",
+  "update.checking": "جارٍ التحقق من التحديثات…",
+  "update.upToDate": "أنت تستخدم أحدث إصدار.",
+  "update.checkNow": "تحقق من التحديثات",
+  "update.version": "الإصدار {version}",
 }
 
 export type TranslationKey = keyof typeof en

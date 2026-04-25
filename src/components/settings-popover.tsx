@@ -4,9 +4,11 @@ import * as Popover from "@radix-ui/react-popover"
 import { useFolders } from "@/contexts/folder-context"
 import { ACCENT_OPTIONS, useSettings, type Density, type Theme, type Language } from "@/contexts/settings-context"
 import { useT } from "@/contexts/i18n-context"
-import { Settings, Check, Sun, Moon, Languages, Monitor } from "lucide-react"
+import { Settings, Check, Sun, Moon, Languages, Monitor, RefreshCw } from "lucide-react"
 import { AiKeysSection } from "./ai-keys-section"
-import type { ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
+import { library } from "@/lib/library"
+import { toast } from "sonner"
 
 const DENSITY_VALUES: Density[] = ["compact", "cozy", "spacious"]
 const THEMES: Theme[] = ["dark", "light", "auto"]
@@ -160,8 +162,63 @@ export function SettingsPopover({ trigger }: { trigger?: ReactNode }) {
           </div>
 
           <AiKeysSection />
+
+          <VersionRow />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
+  )
+}
+
+function VersionRow() {
+  const { t } = useT()
+  const [version, setVersion] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.api?.app) return
+    library.app
+      .getVersion()
+      .then(setVersion)
+      .catch(() => setVersion(null))
+  }, [])
+
+  const checkNow = async () => {
+    if (!window.api?.update) return
+    setChecking(true)
+    try {
+      const r = await library.update.checkNow()
+      if (r.skipped) {
+        toast.info(t("update.upToDate"))
+      } else if (!r.version) {
+        toast.success(t("update.upToDate"))
+      }
+      // If a real update exists, the UpdateToast will pop up via the
+      // update-available event — no extra toast needed here.
+    } catch (err) {
+      toast.error(t("update.error.title"), {
+        description: (err as Error).message,
+      })
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  if (!version) return null
+
+  return (
+    <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
+      <div className="text-[11px] text-white/40">
+        {t("update.version", { version })}
+      </div>
+      <button
+        onClick={checkNow}
+        disabled={checking}
+        className="flex items-center gap-1.5 text-[11px] text-white/60 hover:text-white transition-colors disabled:opacity-50"
+      >
+        <RefreshCw className={`size-3 ${checking ? "animate-spin" : ""}`} />
+        {checking ? t("update.checking") : t("update.checkNow")}
+      </button>
+    </div>
   )
 }

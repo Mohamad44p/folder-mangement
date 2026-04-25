@@ -32,7 +32,7 @@ import { registerVersionsIpc } from "./ipc/versions"
 import { registerTagsIpc } from "./ipc/tags"
 import { registerPaletteIpc } from "./ipc/palette"
 import { registerSmartFoldersIpc } from "./ipc/smart-folders"
-import { startAutoUpdate } from "./auto-update"
+import { startAutoUpdate, registerUpdateIpc } from "./auto-update"
 import {
   registerFoldersScheme,
   registerFoldersSchemePrivilege,
@@ -224,6 +224,7 @@ if (!gotLock) {
     registerShellIpc()
     registerAppMetaIpc()
     registerAiIpc()
+    registerUpdateIpc()
     await bootstrapLibrary()
     createWindow()
     startAutoUpdate(() => mainWindow)

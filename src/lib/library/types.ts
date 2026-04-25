@@ -216,6 +216,35 @@ export interface FsChangedPayload {
   path: string
 }
 
+export interface UpdateAvailablePayload {
+  version: string
+  releaseDate?: string
+  releaseNotes: string | null
+}
+
+export interface UpdateProgressPayload {
+  percent: number
+  transferred: number
+  total: number
+  bytesPerSecond: number
+}
+
+export interface UpdateDownloadedPayload {
+  version: string
+}
+
+export interface UpdateErrorPayload {
+  message: string
+}
+
+export type UpdateEventMap = {
+  "update-available": UpdateAvailablePayload
+  "update-not-available": Record<string, never>
+  "update-progress": UpdateProgressPayload
+  "update-downloaded": UpdateDownloadedPayload
+  "update-error": UpdateErrorPayload
+}
+
 export interface WindowApi {
   library: {
     listAllFolders: () => Promise<FolderRecord[]>
@@ -326,6 +355,15 @@ export interface WindowApi {
     on: (
       event: "fs-changed" | "thumb-ready" | "reconcile-progress",
       handler: (payload: unknown) => void,
+    ) => () => void
+  }
+  update: {
+    checkNow: () => Promise<{ skipped?: boolean; reason?: string; version?: string | null }>
+    startDownload: () => Promise<void>
+    installNow: () => Promise<void>
+    on: <K extends keyof UpdateEventMap>(
+      event: K,
+      handler: (payload: UpdateEventMap[K]) => void,
     ) => () => void
   }
   shell: {

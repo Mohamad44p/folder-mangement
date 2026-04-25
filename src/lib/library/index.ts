@@ -147,11 +147,18 @@ export const library = {
       h: (p: unknown) => void,
     ) => window.api.events.on(event, h),
   },
+  update: {
+    checkNow: () => window.api.update.checkNow(),
+    startDownload: () => window.api.update.startDownload(),
+    installNow: () => window.api.update.installNow(),
+    on: window.api.update.on,
+  },
   app: {
     getLibraryPath: () => window.api.app.getLibraryPath(),
     hasLibraryPath: () => window.api.app.hasLibraryPath(),
     setLibraryPath: (p: string) => window.api.app.setLibraryPath(p),
     getVersion: () => window.api.app.getVersion(),
+    relaunch: () => window.api.app.relaunch(),
   },
 }
 

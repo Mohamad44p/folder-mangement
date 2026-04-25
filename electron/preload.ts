@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron"
 import type {
   WindowApi,
   FsChangedPayload,
+  UpdateEventMap,
 } from "../src/lib/library/types"
 
 type IpcResult<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } }
@@ -122,6 +123,27 @@ const api: WindowApi = {
       const channel = `event:${event}`
       const listener = (_e: unknown, payload: unknown) =>
         handler(payload as FsChangedPayload)
+      ipcRenderer.on(channel, listener)
+      return () => ipcRenderer.off(channel, listener)
+    },
+  },
+  update: {
+    checkNow: async () => {
+      const r = (await ipcRenderer.invoke("update:check-now")) as
+        | { ok: true; data: { skipped?: boolean; reason?: string; version?: string | null } }
+        | { ok: false; error: { code: string; message: string } }
+      if (!r.ok) throw new Error(r.error.message)
+      return r.data
+    },
+    startDownload: () => invoke("update:start-download"),
+    installNow: () => invoke("update:install-now"),
+    on: <K extends keyof UpdateEventMap>(
+      event: K,
+      handler: (payload: UpdateEventMap[K]) => void,
+    ) => {
+      const channel = `event:${event}`
+      const listener = (_e: unknown, payload: unknown) =>
+        handler(payload as UpdateEventMap[K])
       ipcRenderer.on(channel, listener)
       return () => ipcRenderer.off(channel, listener)
     },
