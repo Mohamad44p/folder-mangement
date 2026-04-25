@@ -45,6 +45,10 @@ export const library = {
     setKey: (provider: AiProvider, key: string) => window.api.ai.setKey(provider, key),
     getKeyStatus: (provider: AiProvider) => window.api.ai.getKeyStatus(provider),
     deleteKey: (provider: AiProvider) => window.api.ai.deleteKey(provider),
+    autoTag: (fileId: string, provider?: AiProvider) =>
+      window.api.ai.autoTag(fileId, provider),
+    caption: (fileId: string, provider?: AiProvider) =>
+      window.api.ai.caption(fileId, provider),
   },
   events: {
     on: (

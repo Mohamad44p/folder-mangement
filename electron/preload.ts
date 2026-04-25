@@ -46,6 +46,8 @@ const api: WindowApi = {
     setKey: (provider, key) => invoke("ai:set-key", provider, key),
     getKeyStatus: (provider) => invoke("ai:get-key-status", provider),
     deleteKey: (provider) => invoke("ai:delete-key", provider),
+    autoTag: (fileId, provider) => invoke("ai:auto-tag", fileId, provider),
+    caption: (fileId, provider) => invoke("ai:caption", fileId, provider),
   },
   events: {
     on: (event, handler) => {

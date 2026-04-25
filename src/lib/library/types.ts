@@ -107,6 +107,11 @@ export interface WindowApi {
     setKey: (provider: AiProvider, key: string) => Promise<void>
     getKeyStatus: (provider: AiProvider) => Promise<{ has: boolean }>
     deleteKey: (provider: AiProvider) => Promise<void>
+    autoTag: (
+      fileId: string,
+      provider?: AiProvider,
+    ) => Promise<{ tags: { tag: string; confidence: number }[] }>
+    caption: (fileId: string, provider?: AiProvider) => Promise<{ caption: string }>
   }
   events: {
     on: (

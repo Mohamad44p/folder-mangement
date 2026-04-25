@@ -17,6 +17,7 @@ import {
 } from "./ipc/settings"
 import { wrapIpc } from "./ipc/envelope"
 import { registerAiIpc } from "./ipc/ai"
+import { registerAiRealIpc } from "./ipc/ai-real"
 import { registerSearchIpc } from "./ipc/search"
 import { startAutoUpdate } from "./auto-update"
 import {
@@ -83,6 +84,7 @@ async function bootstrapLibrary(): Promise<void> {
   registerLibraryIpc(libraryService)
   registerFilesIpc(filesService, db)
   registerSearchIpc(db)
+  registerAiRealIpc(db)
 
   watcher = new LibraryWatcher({ libraryRoot: root })
   watcher.start()

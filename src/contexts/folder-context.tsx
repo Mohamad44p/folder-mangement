@@ -975,6 +975,32 @@ export function FolderProvider({ children }: { children: ReactNode }) {
               flipV: r.flipV,
             })
           }
+          // Fire-and-forget AI auto-tag for image uploads. If no key is
+          // configured the call rejects and we just leave ai_tag_status as
+          // 'pending' for a future retry.
+          for (const r of created) {
+            if (r.type !== "image") continue
+            void library.ai
+              .autoTag(r.id)
+              .then((res) => {
+                setFolders((prev) =>
+                  prev.map((f) => {
+                    if (String(f.id) !== folderId) return f
+                    return {
+                      ...f,
+                      files: (f.files ?? []).map((file) =>
+                        file.id === r.id
+                          ? { ...file, aiTags: res.tags }
+                          : file,
+                      ),
+                    }
+                  }),
+                )
+              })
+              .catch(() => {
+                // No key, network error, or model failure — silent.
+              })
+          }
         }
       } catch (err) {
         console.error("library.upload failed:", err)

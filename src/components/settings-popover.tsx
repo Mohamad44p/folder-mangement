@@ -5,6 +5,7 @@ import { useFolders } from "@/contexts/folder-context"
 import { ACCENT_OPTIONS, useSettings, type Density, type Theme, type Language } from "@/contexts/settings-context"
 import { useT } from "@/contexts/i18n-context"
 import { Settings, Check, Sun, Moon, Languages } from "lucide-react"
+import { AiKeysSection } from "./ai-keys-section"
 import type { ReactNode } from "react"
 
 const DENSITY_VALUES: Density[] = ["compact", "cozy", "spacious"]
@@ -44,7 +45,7 @@ export function SettingsPopover({ trigger }: { trigger?: ReactNode }) {
           align="start"
           side="right"
           sideOffset={6}
-          className="z-[300] w-[300px] rounded-xl bg-[#1a1a1a] border border-white/[0.08] shadow-2xl p-4 space-y-4"
+          className="z-[300] w-[320px] max-h-[80vh] overflow-y-auto rounded-xl bg-[#1a1a1a] border border-white/[0.08] shadow-2xl p-4 space-y-4"
         >
           <div className="flex items-center gap-2">
             <Settings className="size-3.5 text-white/60" />
@@ -157,6 +158,8 @@ export function SettingsPopover({ trigger }: { trigger?: ReactNode }) {
               />
             </button>
           </div>
+
+          <AiKeysSection />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
