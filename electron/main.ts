@@ -7,6 +7,8 @@ import { LibraryService } from "./ipc/library"
 import { registerLibraryIpc } from "./ipc/library-ipc"
 import { FilesService } from "./ipc/files"
 import { registerFilesIpc } from "./ipc/files-ipc"
+import { LibraryWatcher } from "./ipc/fs-watcher"
+import { reconcileLibrary } from "./ipc/reconcile"
 import {
   defaultLibraryPath,
   ensureLibraryPath,
@@ -14,11 +16,18 @@ import {
   settingsStore,
 } from "./ipc/settings"
 import { wrapIpc } from "./ipc/envelope"
+import {
+  registerFoldersScheme,
+  registerFoldersSchemePrivilege,
+} from "./protocols/folders-scheme"
+
+registerFoldersSchemePrivilege()
 
 const isDev = process.env.NODE_ENV === "development"
 
 let mainWindow: BrowserWindow | null = null
 let libraryService: LibraryService | null = null
+let watcher: LibraryWatcher | null = null
 let bootstrapped = false
 
 function createWindow(): void {
@@ -48,15 +57,12 @@ function createWindow(): void {
   })
 }
 
-function bootstrapLibrary(): void {
+async function bootstrapLibrary(): Promise<void> {
   if (bootstrapped) return
   const stored = settingsStore.getLibraryPath()
   const root = stored ?? defaultLibraryPath()
   const r = ensureLibraryPath(root)
   if (!r.ok) {
-    // Library directory not accessible. The renderer's first-run picker
-    // will allow the user to pick another location and call setLibraryPath,
-    // which then triggers a relaunch via app:relaunch.
     console.error("Failed to access library path:", r.error)
     return
   }
@@ -64,10 +70,19 @@ function bootstrapLibrary(): void {
   ensureMetaDirs(root)
   const { db } = openLibraryDb(root)
   const queries = new Queries(db)
+
+  registerFoldersScheme(db)
+
+  await reconcileLibrary({ db, queries, libraryRoot: root })
+
   libraryService = new LibraryService({ db, queries, libraryRoot: root })
   const filesService = new FilesService({ db, queries, libraryRoot: root })
   registerLibraryIpc(libraryService)
   registerFilesIpc(filesService, db)
+
+  watcher = new LibraryWatcher({ libraryRoot: root })
+  watcher.start()
+
   bootstrapped = true
 }
 
@@ -111,15 +126,16 @@ if (!gotLock) {
     }
   })
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     registerSettingsIpc(settingsStore)
     registerShellIpc()
     registerAppMetaIpc()
-    bootstrapLibrary()
+    await bootstrapLibrary()
     createWindow()
   })
 
   app.on("window-all-closed", () => {
+    void watcher?.stop()
     libraryService?.close()
     if (process.platform !== "darwin") app.quit()
   })
